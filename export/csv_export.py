@@ -7,7 +7,7 @@ EPIC 7 - Rate Card Matrix Export
 
 import csv
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 import logging
 
@@ -79,7 +79,7 @@ class CSVExporter:
     
     def export_single(
         self,
-        benchmark_data: Dict[str, any],
+        benchmark_data: Dict[str, Any],
         filename: Optional[str] = None
     ) -> str:
         """
@@ -113,7 +113,7 @@ class CSVExporter:
     
     def export_multiple(
         self,
-        benchmark_data_list: List[Dict[str, any]],
+        benchmark_data_list: List[Dict[str, Any]],
         filename: Optional[str] = None
     ) -> str:
         """
@@ -150,7 +150,7 @@ class CSVExporter:
         logger.info(f"Exported {len(benchmark_data_list)} benchmarks to {filepath}")
         return filepath
     
-    def _benchmark_to_row(self, benchmark_data: Dict[str, any]) -> Dict[str, any]:
+    def _benchmark_to_row(self, benchmark_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Convert benchmark data dictionary to CSV row format.
         
@@ -215,7 +215,7 @@ class CSVExporter:
     
     def export_from_database_records(
         self,
-        db_records: List[Dict[str, any]],
+        db_records: List[Dict[str, Any]],
         filename: Optional[str] = None
     ) -> str:
         """
@@ -232,7 +232,7 @@ class CSVExporter:
 
 
 def export_benchmark(
-    benchmark_data: Dict[str, any],
+    benchmark_data: Dict[str, Any],
     export_dir: Optional[str] = None,
     filename: Optional[str] = None
 ) -> str:
@@ -252,7 +252,7 @@ def export_benchmark(
 
 
 def export_benchmarks(
-    benchmark_data_list: List[Dict[str, any]],
+    benchmark_data_list: List[Dict[str, Any]],
     export_dir: Optional[str] = None,
     filename: Optional[str] = None
 ) -> str:

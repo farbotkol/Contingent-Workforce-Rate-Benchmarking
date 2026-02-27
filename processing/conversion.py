@@ -7,7 +7,7 @@ EPIC 3 - Salary to Contractor Conversion
 
 import yaml
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 
 class SalaryConverter:
@@ -83,7 +83,7 @@ class SalaryConverter:
         annual_salary: float,
         country: str,
         exclude_superannuation: bool = True
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Convert annual salary to daily contractor rate.
         
@@ -124,7 +124,7 @@ class SalaryConverter:
         hourly_rate: float,
         hours_per_day: int = 8,
         country: Optional[str] = None
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Convert hourly rate to daily rate.
         
@@ -154,7 +154,7 @@ class SalaryConverter:
         self,
         daily_rate: float,
         country: str
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Mark a daily rate as directly observed (not derived from salary).
         

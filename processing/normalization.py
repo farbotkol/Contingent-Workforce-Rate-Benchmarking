@@ -7,7 +7,7 @@ EPIC 1 - Role Normalisation Engine
 
 import yaml
 import os
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 
 class RoleNormalizer:
@@ -125,7 +125,7 @@ class RoleNormalizer:
         self,
         external_title: str,
         seniority_override: Optional[str] = None
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Complete normalization: map title and classify seniority.
         

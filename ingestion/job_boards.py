@@ -8,7 +8,7 @@ Note: This is a framework. Actual scrapers must respect robots.txt and legal bou
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 import time
 
@@ -121,7 +121,7 @@ class JobBoardScraper:
         self,
         html_content: str,
         source_name: str
-    ) -> List[Dict[str, any]]:
+    ) -> List[Dict[str, Any]]:
         """
         Parse job posting HTML to extract rate/salary information.
         
@@ -166,7 +166,7 @@ class JobBoardScraper:
         listing_element,
         source_name: str,
         timestamp: str
-    ) -> Optional[Dict[str, any]]:
+    ) -> Optional[Dict[str, Any]]:
         """
         Extract data from a single job listing element.
         
@@ -223,8 +223,8 @@ class JobBoardScraper:
     
     def deduplicate_postings(
         self,
-        postings: List[Dict[str, any]]
-    ) -> List[Dict[str, any]]:
+        postings: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
         Remove duplicate job postings.
         

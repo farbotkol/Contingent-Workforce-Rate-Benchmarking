@@ -6,7 +6,7 @@ EPIC 4 - Statistical Rate Band Engine
 """
 
 import numpy as np
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class RateBandCalculator:
         self,
         rates: List[float],
         remove_outliers: bool = True
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Calculate P25, Median, and P75 for rate bands.
         
@@ -161,7 +161,7 @@ class RateBandCalculator:
         country: str,
         role: str,
         level: str
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Generate complete rate band information.
         
@@ -206,7 +206,7 @@ def calculate_rate_bands(
     level: str,
     trim_percentage: float = 10.0,
     min_data_points: int = 10
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Convenience function to calculate rate bands.
     

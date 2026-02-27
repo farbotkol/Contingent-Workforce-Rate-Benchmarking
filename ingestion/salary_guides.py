@@ -6,7 +6,7 @@ EPIC 2 - Data Ingestion (Public Sources Only)
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class SalaryGuideExtractor:
         pdf_path: str,
         source_name: str,
         country: str
-    ) -> List[Dict[str, any]]:
+    ) -> List[Dict[str, Any]]:
         """
         Extract salary data from a PDF salary guide.
         
@@ -111,7 +111,7 @@ class SalaryGuideExtractor:
         source_name: str,
         country: str,
         timestamp: str
-    ) -> Optional[Dict[str, any]]:
+    ) -> Optional[Dict[str, Any]]:
         """
         Parse a single table row to extract salary information.
         
@@ -225,7 +225,7 @@ def extract_salary_guide(
     pdf_path: str,
     source_name: str,
     country: str
-) -> List[Dict[str, any]]:
+) -> List[Dict[str, Any]]:
     """
     Convenience function to extract data from a salary guide PDF.
     

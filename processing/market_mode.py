@@ -5,7 +5,7 @@ Detects market momentum: Inflationary, Contraction, or Stable.
 EPIC 5 - Market Mode Detection
 """
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from datetime import datetime
 import logging
 
@@ -61,7 +61,7 @@ class MarketModeDetector:
         current_posting_count: int,
         historical_posting_count: Optional[int],
         data_points: int
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Detect market mode based on trends.
         
@@ -183,7 +183,7 @@ def detect_market_mode(
     job_growth_threshold: float = 15.0,
     rate_growth_threshold: float = 5.0,
     job_decline_threshold: float = 15.0
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Convenience function to detect market mode.
     
