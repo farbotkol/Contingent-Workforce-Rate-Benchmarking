@@ -1,0 +1,38 @@
+# Country-specific multipliers for converting annual salary to daily contractor rates
+# Formula: daily_rate = (annual_salary × multiplier) / 220
+# 220 = working days per year (approximate)
+#
+# Multipliers account for:
+# - Contractor overhead (no paid leave, sick leave, benefits)
+# - Market-specific factors
+# - Risk premium for contract work
+#
+# Note: Australian rates EXCLUDE superannuation (statutory employer contribution)
+
+multipliers:
+  Australia:
+    multiplier: 1.35
+    description: "Accounts for contractor overhead, excludes 11% superannuation"
+    working_days_per_year: 220
+    
+  Singapore:
+    multiplier: 1.30
+    description: "Accounts for contractor overhead and CPF considerations"
+    working_days_per_year: 220
+    
+  India:
+    multiplier: 1.25
+    description: "Lower multiplier due to market dynamics"
+    working_days_per_year: 220
+    
+  Philippines:
+    multiplier: 1.28
+    description: "Accounts for contractor overhead in Philippine market"
+    working_days_per_year: 220
+
+# Currency codes
+currencies:
+  Australia: "AUD"
+  Singapore: "SGD"
+  India: "INR"
+  Philippines: "PHP"
