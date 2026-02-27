@@ -107,7 +107,7 @@ class SalaryGuideExtractor:
     def _parse_table_row(
         self,
         headers: List[str],
-        row: List[any],
+        row: List[Any],
         source_name: str,
         country: str,
         timestamp: str
