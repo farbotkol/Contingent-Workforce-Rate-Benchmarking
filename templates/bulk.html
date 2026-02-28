@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Bulk Upload → Normalize → Benchmark</h2>
+<form method="post" enctype="multipart/form-data">
+  <input type="hidden" name="action" value="bulk_normalize">
+  <label>Country (applies to all rows)</label>
+  <select name="bulk_country" required>
+    {% for country in countries %}
+      <option value="{{ country }}" {% if bulk_form.country == country %}selected{% endif %}>{{ country }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Source (applies to all rows)</label>
+  <select name="bulk_source" required>
+    {% for source in benchmark_sources %}
+      <option value="{{ source }}" {% if bulk_form.source == source %}selected{% endif %}>{{ source }}</option>
+    {% endfor %}
+  </select>
+
+  <label>CSV File</label>
+  <input type="file" name="bulk_file" accept=".csv" required>
+  <div class="small">Required column: <strong>role</strong>. Optional columns: <strong>description</strong>, <strong>level</strong>, <strong>rate_low</strong>, <strong>rate_medium</strong>, <strong>rate_high</strong>, <strong>salary_low</strong>, <strong>salary_medium</strong>, <strong>salary_high</strong>, <strong>rates</strong>, <strong>salaries</strong>.</div>
+  <div class="small">This is a manual load flow only: it normalizes roles and benchmarks your provided data. It does not search internet or AI.</div>
+  <a href="{{ url_for('download_sample', sample_key='bulk-benchmark') }}"><button type="button">Download Sample Bulk CSV (100 Roles)</button></a>
+
+  <button type="submit">Normalize Bulk File</button>
+</form>
+
+{% if normalize_error %}<p class="error">{{ normalize_error }}</p>{% endif %}
+
+{% if normalize_result %}
+<div class="result">
+  <div><strong>Normalized Rows:</strong> {{ normalize_result.count }} | <strong>Source:</strong> {{ normalize_result.source }} | <strong>Country:</strong> {{ normalize_result.country }}</div>
+  <form method="post">
+    <input type="hidden" name="action" value="bulk_benchmark_accepted">
+    <input type="hidden" name="normalized_payload_b64" value="{{ normalize_result.payload_b64 }}">
+    <input type="hidden" name="accepted_country" value="{{ normalize_result.country }}">
+    <input type="hidden" name="accepted_source" value="{{ normalize_result.source }}">
+    <input type="hidden" name="accepted_filename" value="{{ bulk_form.filename }}">
+
+    <table>
+      <thead><tr><th>Accept</th><th>Line</th><th>Input Role</th><th>Description</th><th>Mapped Role</th><th>Level</th><th>Confidence</th></tr></thead>
+      <tbody>
+        {% for row in normalize_result.rows %}
+        <tr>
+          <td><input type="checkbox" name="accepted_lines" value="{{ row.line }}" checked></td>
+          <td>{{ row.line }}</td>
+          <td>{{ row.role }}</td>
+          <td>{{ row.description if row.description else '-' }}</td>
+          <td>{{ row.canonical_role }}</td>
+          <td>{{ row.seniority_level }}</td>
+          <td>{{ row.confidence }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <button type="submit">Benchmark Accepted Rows</button>
+  </form>
+</div>
+{% endif %}
+
+{% if benchmark_error %}<p class="error">{{ benchmark_error }}</p>{% endif %}
+{% if benchmark_result %}
+<div class="result">
+  <div><strong>Source:</strong> {{ benchmark_result.source }} | <strong>Country:</strong> {{ benchmark_result.country }}</div>
+  <div><strong>Success:</strong> {{ benchmark_result.success_count }} | <strong>Errors:</strong> {{ benchmark_result.error_count }}</div>
+  <table>
+    <thead><tr><th>Line</th><th>Status</th><th>Input Role</th><th>Mapped Role</th><th>Median</th><th>Range</th><th>Mode</th><th>Details</th></tr></thead>
+    <tbody>
+      {% for row in benchmark_result.rows %}
+      <tr>
+        <td>{{ row.line }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.input_role if row.input_role else '-' }}</td>
+        <td>{{ row.role if row.status == 'ok' else '-' }}</td>
+        <td>{% if row.status == 'ok' %}{{ row.median }} {{ row.currency }}{% else %}-{% endif %}</td>
+        <td>{% if row.status == 'ok' %}{{ row.p25 }} - {{ row.p75 }}{% else %}-{% endif %}</td>
+        <td>{{ row.market_mode if row.status == 'ok' else '-' }}</td>
+        <td>{% if row.status == 'ok' %}ID {{ row.benchmark_id }} ({{ row.data_points }} pts){% else %}{{ row.message }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

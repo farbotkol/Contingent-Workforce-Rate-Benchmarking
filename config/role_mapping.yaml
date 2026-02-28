@@ -1,0 +1,201 @@
+# Role Mapping Configuration
+# Maps external job titles to internal canonical roles and seniority levels
+
+# Canonical internal roles (taxonomy)
+canonical_roles:
+  - "Software Engineer"
+  - "DevOps Engineer"
+  - "Data Engineer"
+  - "Data Scientist"
+  - "QA Engineer"
+  - "Frontend Developer"
+  - "Backend Developer"
+  - "Full Stack Developer"
+  - "Mobile Developer"
+  - "Cloud Architect"
+  - "Solutions Architect"
+  - "Product Manager"
+  - "Project Manager"
+  - "Business Analyst"
+  - "Scrum Master"
+  - "Security Engineer"
+  - "Network Engineer"
+  - "Database Administrator"
+  - "Systems Administrator"
+  - "UI/UX Designer"
+
+# Seniority levels
+seniority_levels:
+  - "Junior"
+  - "Mid"
+  - "Senior"
+  - "Lead"
+  - "Architect"
+
+# Keywords for seniority detection
+seniority_keywords:
+  Junior:
+    - "junior"
+    - "jr"
+    - "graduate"
+    - "entry"
+    - "associate"
+    - "trainee"
+  Mid:
+    - "mid"
+    - "intermediate"
+    - "developer"  # default if no other level specified
+    - "engineer"   # default if no other level specified
+  Senior:
+    - "senior"
+    - "sr"
+    - "principal"
+    - "staff"
+  Lead:
+    - "lead"
+    - "team lead"
+    - "technical lead"
+    - "tech lead"
+  Architect:
+    - "architect"
+    - "chief"
+    - "head of"
+    - "principal architect"
+
+# External title mappings
+# Multiple external titles can map to one canonical role
+role_mappings:
+  "Software Engineer":
+    - "software engineer"
+    - "software developer"
+    - "application developer"
+    - "programmer"
+    - "coder"
+    - "sde"
+    
+  "DevOps Engineer":
+    - "devops engineer"
+    - "devops"
+    - "site reliability engineer"
+    - "sre"
+    - "platform engineer"
+    - "infrastructure engineer"
+    
+  "Data Engineer":
+    - "data engineer"
+    - "big data engineer"
+    - "etl developer"
+    - "data platform engineer"
+    
+  "Data Scientist":
+    - "data scientist"
+    - "machine learning engineer"
+    - "ml engineer"
+    - "ai engineer"
+    - "data analyst"
+    
+  "QA Engineer":
+    - "qa engineer"
+    - "quality assurance engineer"
+    - "test engineer"
+    - "sdet"
+    - "software test engineer"
+    - "automation engineer"
+    
+  "Frontend Developer":
+    - "frontend developer"
+    - "front end developer"
+    - "front-end developer"
+    - "ui developer"
+    - "web developer"
+    - "react developer"
+    - "angular developer"
+    - "vue developer"
+    
+  "Backend Developer":
+    - "backend developer"
+    - "back end developer"
+    - "back-end developer"
+    - "server developer"
+    - "api developer"
+    
+  "Full Stack Developer":
+    - "full stack developer"
+    - "fullstack developer"
+    - "full-stack developer"
+    - "full stack engineer"
+    
+  "Mobile Developer":
+    - "mobile developer"
+    - "ios developer"
+    - "android developer"
+    - "mobile engineer"
+    - "app developer"
+    
+  "Cloud Architect":
+    - "cloud architect"
+    - "aws architect"
+    - "azure architect"
+    - "gcp architect"
+    - "cloud solutions architect"
+    
+  "Solutions Architect":
+    - "solutions architect"
+    - "solution architect"
+    - "technical architect"
+    - "enterprise architect"
+    - "systems architect"
+    
+  "Product Manager":
+    - "product manager"
+    - "product owner"
+    - "pm"
+    
+  "Project Manager":
+    - "project manager"
+    - "program manager"
+    - "delivery manager"
+    - "pmo"
+    
+  "Business Analyst":
+    - "business analyst"
+    - "systems analyst"
+    - "functional analyst"
+    - "ba"
+    
+  "Scrum Master":
+    - "scrum master"
+    - "agile coach"
+    - "agile project manager"
+    
+  "Security Engineer":
+    - "security engineer"
+    - "cybersecurity engineer"
+    - "information security engineer"
+    - "appsec engineer"
+    - "security analyst"
+    
+  "Network Engineer":
+    - "network engineer"
+    - "network administrator"
+    - "network architect"
+    
+  "Database Administrator":
+    - "database administrator"
+    - "dba"
+    - "database engineer"
+    
+  "Systems Administrator":
+    - "systems administrator"
+    - "sysadmin"
+    - "system administrator"
+    - "linux administrator"
+    - "windows administrator"
+    
+  "UI/UX Designer":
+    - "ui designer"
+    - "ux designer"
+    - "ui/ux designer"
+    - "product designer"
+    - "interaction designer"
+    - "user experience designer"

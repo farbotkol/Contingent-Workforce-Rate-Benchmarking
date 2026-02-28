@@ -1,0 +1,101 @@
+role,description,level,rate_low,rate_medium,rate_high,salary_low,salary_medium,salary_high
+Software Engineer - Payments,Builds and maintains backend and frontend application features. Domain focus: Payments.,Junior,420,510,600,78000,103000,128000
+Senior Software Engineer - E-commerce,Leads design and delivery of complex software components. Domain focus: E-commerce.,Mid,432,522,612,79450,104450,129450
+Frontend Developer - Healthcare,Implements responsive UI components and accessibility improvements. Domain focus: Healthcare.,Senior,444,534,624,80900,105900,130900
+Backend Developer - FinTech,"Builds APIs, service integrations, and database interactions. Domain focus: FinTech.",Lead,456,546,636,82350,107350,132350
+Full Stack Developer - Retail,Delivers end-to-end product features across frontend and backend. Domain focus: Retail.,Architect,468,558,648,83800,108800,133800
+DevOps Engineer - Telecom,Automates CI/CD pipelines and cloud infrastructure operations. Domain focus: Telecom.,Junior,480,570,660,85250,110250,135250
+Site Reliability Engineer - Energy,"Improves system reliability, observability, and incident response. Domain focus: Energy.",Mid,492,582,672,86700,111700,136700
+Platform Engineer - Logistics,"Creates developer platforms, deployment tooling, and runtime standards. Domain focus: Logistics.",Senior,504,594,684,88150,113150,138150
+Data Engineer - Public Sector,Builds ETL pipelines and maintains scalable data platforms. Domain focus: Public Sector.,Lead,516,606,696,89600,114600,139600
+Data Scientist - Education,Develops predictive models and analytical insights from business data. Domain focus: Education.,Architect,528,618,708,91050,116050,141050
+Machine Learning Engineer - Payments,Deploys and monitors machine learning models in production. Domain focus: Payments.,Junior,540,630,720,92500,117500,142500
+QA Engineer - E-commerce,Designs and executes test strategies for product quality assurance. Domain focus: E-commerce.,Mid,552,642,732,93950,118950,143950
+Automation Test Engineer - Healthcare,Builds automated test suites and quality gates in CI pipelines. Domain focus: Healthcare.,Senior,564,654,744,95400,120400,145400
+Cloud Architect - FinTech,"Designs secure, scalable cloud architecture and migration plans. Domain focus: FinTech.",Lead,576,666,756,96850,121850,146850
+Solutions Architect - Retail,Defines solution blueprints aligned to enterprise requirements. Domain focus: Retail.,Architect,588,678,768,98300,123300,148300
+Security Engineer - Telecom,"Implements security controls, vulnerability management, and hardening. Domain focus: Telecom.",Junior,600,690,780,99750,124750,149750
+Cybersecurity Analyst - Energy,"Monitors threats, investigates alerts, and improves security posture. Domain focus: Energy.",Mid,612,702,792,101200,126200,151200
+Network Engineer - Logistics,Designs and supports enterprise networking and connectivity services. Domain focus: Logistics.,Senior,624,714,804,102650,127650,152650
+Systems Administrator - Public Sector,"Manages servers, OS patching, and core infrastructure services. Domain focus: Public Sector.",Lead,636,726,816,104100,129100,154100
+Database Administrator - Education,"Optimizes database performance, backups, and availability. Domain focus: Education.",Architect,648,738,828,105550,130550,155550
+Mobile Developer - Payments,Builds and ships native and cross-platform mobile applications. Domain focus: Payments.,Junior,660,750,840,107000,132000,157000
+iOS Developer - E-commerce,Develops and maintains iOS applications and mobile SDK integrations. Domain focus: E-commerce.,Mid,672,762,852,108450,133450,158450
+Android Developer - Healthcare,Develops Android features with performance and stability focus. Domain focus: Healthcare.,Senior,684,774,864,109900,134900,159900
+UI Designer - FinTech,Designs visual interfaces aligned with brand and usability standards. Domain focus: FinTech.,Lead,696,786,876,111350,136350,161350
+UX Designer - Retail,Researches user needs and designs intuitive product experiences. Domain focus: Retail.,Architect,708,798,888,112800,137800,162800
+Product Designer - Telecom,Combines UX and UI practices to deliver cohesive product design. Domain focus: Telecom.,Junior,720,810,900,114250,139250,164250
+Product Manager - Energy,Owns roadmap prioritization and cross-functional delivery outcomes. Domain focus: Energy.,Mid,732,822,912,115700,140700,165700
+Technical Product Manager - Logistics,Drives technically complex product initiatives and platform strategy. Domain focus: Logistics.,Senior,744,834,924,117150,142150,167150
+Project Manager - Public Sector,"Plans and manages project scope, timelines, and stakeholder alignment. Domain focus: Public Sector.",Lead,756,846,936,118600,143600,168600
+Program Manager - Education,Coordinates multi-project delivery and strategic initiative governance. Domain focus: Education.,Architect,768,858,948,120050,145050,170050
+Scrum Master - Payments,Facilitates agile ceremonies and continuous team process improvement. Domain focus: Payments.,Junior,780,870,960,121500,146500,171500
+Business Analyst - E-commerce,Elicits requirements and translates business needs into delivery scope. Domain focus: E-commerce.,Mid,792,882,972,122950,147950,172950
+Systems Analyst - Healthcare,Analyzes system behavior and documents functional specifications. Domain focus: Healthcare.,Senior,804,894,984,124400,149400,174400
+Enterprise Architect - FinTech,Defines enterprise architecture standards and capability roadmaps. Domain focus: FinTech.,Lead,816,906,996,125850,150850,175850
+Technical Lead - Retail,Guides engineering teams on architecture and implementation quality. Domain focus: Retail.,Architect,828,918,1008,127300,152300,177300
+Engineering Manager - Telecom,"Leads engineering teams, delivery execution, and performance coaching. Domain focus: Telecom.",Junior,420,510,600,128750,153750,178750
+Release Manager - Energy,"Coordinates release planning, cutover, and deployment governance. Domain focus: Energy.",Mid,432,522,612,130200,155200,180200
+PMO Analyst - Logistics,"Supports project governance, reporting, and portfolio controls. Domain focus: Logistics.",Senior,444,534,624,131650,156650,181650
+Data Analyst - Public Sector,Builds dashboards and performs analysis for business decision-making. Domain focus: Public Sector.,Lead,456,546,636,133100,158100,183100
+BI Developer - Education,"Develops BI models, reports, and semantic data layers. Domain focus: Education.",Architect,468,558,648,134550,159550,184550
+ETL Developer - Payments,"Implements extraction, transformation, and loading workflows. Domain focus: Payments.",Junior,480,570,660,136000,161000,186000
+MLOps Engineer - E-commerce,Operationalizes machine learning workflows and model lifecycle tooling. Domain focus: E-commerce.,Mid,492,582,672,137450,162450,187450
+Cloud Engineer - Healthcare,"Implements cloud resources, networking, and operational automation. Domain focus: Healthcare.",Senior,504,594,684,138900,163900,188900
+AWS Engineer - FinTech,Builds and supports workloads on AWS cloud services. Domain focus: FinTech.,Lead,516,606,696,140350,165350,190350
+Azure Engineer - Retail,Builds and supports workloads on Microsoft Azure services. Domain focus: Retail.,Architect,528,618,708,141800,166800,191800
+GCP Engineer - Telecom,Builds and supports workloads on Google Cloud Platform services. Domain focus: Telecom.,Junior,540,630,720,143250,168250,193250
+Infrastructure Engineer - Energy,Designs and maintains on-prem and cloud infrastructure layers. Domain focus: Energy.,Mid,552,642,732,144700,169700,194700
+Application Support Engineer - Logistics,Resolves production issues and improves service stability. Domain focus: Logistics.,Senior,564,654,744,146150,171150,196150
+Service Delivery Manager - Public Sector,"Oversees service quality, SLAs, and customer satisfaction metrics. Domain focus: Public Sector.",Lead,576,666,756,147600,172600,197600
+Technical Writer - Education,Creates technical documentation and process guides for teams. Domain focus: Education.,Architect,588,678,768,149050,174050,199050
+Software Engineer - Payments,Builds and maintains backend and frontend application features. Domain focus: Payments.,Junior,600,690,780,150500,175500,200500
+Senior Software Engineer - E-commerce,Leads design and delivery of complex software components. Domain focus: E-commerce.,Mid,612,702,792,151950,176950,201950
+Frontend Developer - Healthcare,Implements responsive UI components and accessibility improvements. Domain focus: Healthcare.,Senior,624,714,804,153400,178400,203400
+Backend Developer - FinTech,"Builds APIs, service integrations, and database interactions. Domain focus: FinTech.",Lead,636,726,816,154850,179850,204850
+Full Stack Developer - Retail,Delivers end-to-end product features across frontend and backend. Domain focus: Retail.,Architect,648,738,828,156300,181300,206300
+DevOps Engineer - Telecom,Automates CI/CD pipelines and cloud infrastructure operations. Domain focus: Telecom.,Junior,660,750,840,157750,182750,207750
+Site Reliability Engineer - Energy,"Improves system reliability, observability, and incident response. Domain focus: Energy.",Mid,672,762,852,159200,184200,209200
+Platform Engineer - Logistics,"Creates developer platforms, deployment tooling, and runtime standards. Domain focus: Logistics.",Senior,684,774,864,160650,185650,210650
+Data Engineer - Public Sector,Builds ETL pipelines and maintains scalable data platforms. Domain focus: Public Sector.,Lead,696,786,876,162100,187100,212100
+Data Scientist - Education,Develops predictive models and analytical insights from business data. Domain focus: Education.,Architect,708,798,888,163550,188550,213550
+Machine Learning Engineer - Payments,Deploys and monitors machine learning models in production. Domain focus: Payments.,Junior,720,810,900,165000,190000,215000
+QA Engineer - E-commerce,Designs and executes test strategies for product quality assurance. Domain focus: E-commerce.,Mid,732,822,912,166450,191450,216450
+Automation Test Engineer - Healthcare,Builds automated test suites and quality gates in CI pipelines. Domain focus: Healthcare.,Senior,744,834,924,167900,192900,217900
+Cloud Architect - FinTech,"Designs secure, scalable cloud architecture and migration plans. Domain focus: FinTech.",Lead,756,846,936,169350,194350,219350
+Solutions Architect - Retail,Defines solution blueprints aligned to enterprise requirements. Domain focus: Retail.,Architect,768,858,948,170800,195800,220800
+Security Engineer - Telecom,"Implements security controls, vulnerability management, and hardening. Domain focus: Telecom.",Junior,780,870,960,172250,197250,222250
+Cybersecurity Analyst - Energy,"Monitors threats, investigates alerts, and improves security posture. Domain focus: Energy.",Mid,792,882,972,173700,198700,223700
+Network Engineer - Logistics,Designs and supports enterprise networking and connectivity services. Domain focus: Logistics.,Senior,804,894,984,175150,200150,225150
+Systems Administrator - Public Sector,"Manages servers, OS patching, and core infrastructure services. Domain focus: Public Sector.",Lead,816,906,996,176600,201600,226600
+Database Administrator - Education,"Optimizes database performance, backups, and availability. Domain focus: Education.",Architect,828,918,1008,178050,203050,228050
+Mobile Developer - Payments,Builds and ships native and cross-platform mobile applications. Domain focus: Payments.,Junior,420,510,600,179500,204500,229500
+iOS Developer - E-commerce,Develops and maintains iOS applications and mobile SDK integrations. Domain focus: E-commerce.,Mid,432,522,612,180950,205950,230950
+Android Developer - Healthcare,Develops Android features with performance and stability focus. Domain focus: Healthcare.,Senior,444,534,624,182400,207400,232400
+UI Designer - FinTech,Designs visual interfaces aligned with brand and usability standards. Domain focus: FinTech.,Lead,456,546,636,183850,208850,233850
+UX Designer - Retail,Researches user needs and designs intuitive product experiences. Domain focus: Retail.,Architect,468,558,648,185300,210300,235300
+Product Designer - Telecom,Combines UX and UI practices to deliver cohesive product design. Domain focus: Telecom.,Junior,480,570,660,186750,211750,236750
+Product Manager - Energy,Owns roadmap prioritization and cross-functional delivery outcomes. Domain focus: Energy.,Mid,492,582,672,188200,213200,238200
+Technical Product Manager - Logistics,Drives technically complex product initiatives and platform strategy. Domain focus: Logistics.,Senior,504,594,684,189650,214650,239650
+Project Manager - Public Sector,"Plans and manages project scope, timelines, and stakeholder alignment. Domain focus: Public Sector.",Lead,516,606,696,191100,216100,241100
+Program Manager - Education,Coordinates multi-project delivery and strategic initiative governance. Domain focus: Education.,Architect,528,618,708,192550,217550,242550
+Scrum Master - Payments,Facilitates agile ceremonies and continuous team process improvement. Domain focus: Payments.,Junior,540,630,720,194000,219000,244000
+Business Analyst - E-commerce,Elicits requirements and translates business needs into delivery scope. Domain focus: E-commerce.,Mid,552,642,732,195450,220450,245450
+Systems Analyst - Healthcare,Analyzes system behavior and documents functional specifications. Domain focus: Healthcare.,Senior,564,654,744,196900,221900,246900
+Enterprise Architect - FinTech,Defines enterprise architecture standards and capability roadmaps. Domain focus: FinTech.,Lead,576,666,756,198350,223350,248350
+Technical Lead - Retail,Guides engineering teams on architecture and implementation quality. Domain focus: Retail.,Architect,588,678,768,199800,224800,249800
+Engineering Manager - Telecom,"Leads engineering teams, delivery execution, and performance coaching. Domain focus: Telecom.",Junior,600,690,780,201250,226250,251250
+Release Manager - Energy,"Coordinates release planning, cutover, and deployment governance. Domain focus: Energy.",Mid,612,702,792,202700,227700,252700
+PMO Analyst - Logistics,"Supports project governance, reporting, and portfolio controls. Domain focus: Logistics.",Senior,624,714,804,204150,229150,254150
+Data Analyst - Public Sector,Builds dashboards and performs analysis for business decision-making. Domain focus: Public Sector.,Lead,636,726,816,205600,230600,255600
+BI Developer - Education,"Develops BI models, reports, and semantic data layers. Domain focus: Education.",Architect,648,738,828,207050,232050,257050
+ETL Developer - Payments,"Implements extraction, transformation, and loading workflows. Domain focus: Payments.",Junior,660,750,840,208500,233500,258500
+MLOps Engineer - E-commerce,Operationalizes machine learning workflows and model lifecycle tooling. Domain focus: E-commerce.,Mid,672,762,852,209950,234950,259950
+Cloud Engineer - Healthcare,"Implements cloud resources, networking, and operational automation. Domain focus: Healthcare.",Senior,684,774,864,211400,236400,261400
+AWS Engineer - FinTech,Builds and supports workloads on AWS cloud services. Domain focus: FinTech.,Lead,696,786,876,212850,237850,262850
+Azure Engineer - Retail,Builds and supports workloads on Microsoft Azure services. Domain focus: Retail.,Architect,708,798,888,214300,239300,264300
+GCP Engineer - Telecom,Builds and supports workloads on Google Cloud Platform services. Domain focus: Telecom.,Junior,720,810,900,215750,240750,265750
+Infrastructure Engineer - Energy,Designs and maintains on-prem and cloud infrastructure layers. Domain focus: Energy.,Mid,732,822,912,217200,242200,267200
+Application Support Engineer - Logistics,Resolves production issues and improves service stability. Domain focus: Logistics.,Senior,744,834,924,218650,243650,268650
+Service Delivery Manager - Public Sector,"Oversees service quality, SLAs, and customer satisfaction metrics. Domain focus: Public Sector.",Lead,756,846,936,220100,245100,270100
+Technical Writer - Education,Creates technical documentation and process guides for teams. Domain focus: Education.,Architect,768,858,948,221550,246550,271550

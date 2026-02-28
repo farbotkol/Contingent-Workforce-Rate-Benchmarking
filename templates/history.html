@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>History</h2>
+<form method="post">
+  <label>Role</label>
+  <input type="text" name="history_role" value="{{ history_form.role }}" required>
+  <label>Level</label>
+  <select name="history_level" required>
+    {% for level in ['Junior', 'Mid', 'Senior', 'Lead', 'Architect'] %}
+      <option value="{{ level }}" {% if history_form.level == level %}selected{% endif %}>{{ level }}</option>
+    {% endfor %}
+  </select>
+  <label>Country</label>
+  <select name="history_country" required>
+    {% for country in countries %}
+      <option value="{{ country }}" {% if history_form.country == country %}selected{% endif %}>{{ country }}</option>
+    {% endfor %}
+  </select>
+  <label>Limit</label>
+  <input type="number" min="1" max="50" name="history_limit" value="{{ history_form.limit }}" required>
+  <button type="submit">Load History</button>
+</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if result %}
+<div class="result">
+  <div><strong>Mapped Role:</strong> {{ result.normalized_role }}</div>
+  {% if result.records %}
+  <table>
+    <thead><tr><th>Date</th><th>Median</th><th>Range</th><th>Mode</th><th>Points</th></tr></thead>
+    <tbody>
+      {% for row in result.records %}
+      <tr>
+        <td>{{ row.timestamp[:10] }}</td>
+        <td>{{ row.median_daily_rate }} {{ row.currency }}</td>
+        <td>{{ row.p25_daily_rate }} - {{ row.p75_daily_rate }}</td>
+        <td>{{ row.market_mode }}</td>
+        <td>{{ row.data_points }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="small">No history found for this role/country/level.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

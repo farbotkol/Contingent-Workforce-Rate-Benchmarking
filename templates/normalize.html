@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Normalize</h2>
+<form method="post">
+  <label>Job Title</label>
+  <input type="text" name="normalize_title" value="{{ normalize_form.title }}" placeholder="Senior Full Stack Developer" required>
+  <button type="submit">Normalize Title</button>
+</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if result %}
+<div class="result">
+  <div><strong>Canonical Role:</strong> {{ result.canonical_role }}</div>
+  <div><strong>Seniority:</strong> {{ result.seniority_level }}</div>
+  <div><strong>Confidence:</strong> {{ result.confidence }}</div>
+</div>
+{% endif %}
+{% endblock %}

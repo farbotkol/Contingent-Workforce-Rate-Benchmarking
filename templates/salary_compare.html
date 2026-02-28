@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .salary-compare-box { margin-top: 1rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem; background: var(--card); }
+  .salary-compare-box h3 { margin: 0 0 0.45rem; color: var(--brand-primary); font-size: 1rem; }
+  .salary-compare-box p { margin: 0.25rem 0 0.75rem; font-size: 0.88rem; color: var(--muted); }
+  .salary-track { position: relative; height: 16px; background: var(--brand-bg); border: 1px solid var(--border); border-radius: 999px; margin: 2rem 0 0.6rem; overflow: visible; }
+  .salary-range { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--brand-accent); }
+  .salary-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 2px; height: 28px; background: var(--brand-primary); }
+  .salary-marker span { position: absolute; left: 50%; transform: translateX(-50%); bottom: 30px; background: var(--brand-primary); color: #ffffff; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .salary-axis { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--muted); }
+</style>
+
+<h2>Salary Compare</h2>
+<p class="small">Compare your annual salary against the latest benchmark range for a normalized role and location.</p>
+
+<form method="post">
+  <label>Role</label>
+  <input type="text" name="salary_compare_role" value="{{ compare_form.role }}" placeholder="e.g. Nurse Manager" required>
+
+  <label>Level (optional override)</label>
+  <select name="salary_compare_level">
+    {% for level in levels %}
+      <option value="{{ level }}" {% if compare_form.level == level %}selected{% endif %}>{{ level if level else 'Auto-detect' }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Country</label>
+  <select name="salary_compare_country" required>
+    {% for country in countries %}
+      <option value="{{ country }}" {% if compare_form.country == country %}selected{% endif %}>{{ country }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Location</label>
+  <select name="salary_compare_city">
+    {% set city_options = major_cities_by_country.get(compare_form.country, []) %}
+    <option value="">Any location</option>
+    {% for city in city_options %}
+      <option value="{{ city }}" {% if compare_form.city == city %}selected{% endif %}>{{ city }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Enter your annual salary</label>
+  <input type="number" step="0.01" min="0" name="salary_compare_annual_salary" value="{{ compare_form.annual_salary }}" placeholder="Annual salary" required>
+
+  <button type="submit">Compare Salary</button>
+</form>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+{% if benchmark_result and salary_compare_result %}
+<div class="salary-compare-box">
+  <h3>Your salary is {{ salary_compare_result.status_text }} the benchmark range</h3>
+  <p>
+    The average annual salary for {{ benchmark_result.role }} ({{ benchmark_result.level }})
+    jobs in {{ benchmark_result.city or benchmark_result.country }} ranges from
+    {{ "{:,.0f}".format(benchmark_result.p25_annual) }} to {{ "{:,.0f}".format(benchmark_result.p75_annual) }} {{ benchmark_result.currency }}.
+  </p>
+  <p class="small">Latest benchmark date: {{ benchmark_result.timestamp }} | Market mode: {{ benchmark_result.market_mode }}</p>
+
+  <div class="salary-track">
+    <div
+      class="salary-range"
+      data-range-start="{{ salary_compare_result.range_start_pct }}"
+      data-range-width="{{ salary_compare_result.range_width_pct }}"
+    ></div>
+    <div class="salary-marker" data-salary-pct="{{ salary_compare_result.salary_pct }}">
+      <span>{{ "{:,.0f}".format(salary_compare_result.annual_salary) }} {{ benchmark_result.currency }}</span>
+    </div>
+  </div>
+
+  <div class="salary-axis">
+    <span>{{ "{:,.0f}".format(salary_compare_result.axis_min) }}</span>
+    <span>{{ "{:,.0f}".format(salary_compare_result.lower_bound) }}</span>
+    <span>{{ "{:,.0f}".format(salary_compare_result.upper_bound) }}</span>
+    <span>{{ "{:,.0f}".format(salary_compare_result.axis_max) }}</span>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.salary-range[data-range-start]').forEach((element) => {
+    const start = Number(element.getAttribute('data-range-start') || '0');
+    const width = Number(element.getAttribute('data-range-width') || '0');
+    element.style.left = `${start}%`;
+    element.style.width = `${width}%`;
+  });
+
+  document.querySelectorAll('.salary-marker[data-salary-pct]').forEach((element) => {
+    const position = Number(element.getAttribute('data-salary-pct') || '0');
+    element.style.left = `${position}%`;
+  });
+</script>
+{% endif %}
+{% endblock %}
