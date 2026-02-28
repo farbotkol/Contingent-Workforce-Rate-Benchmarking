@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Benchmark → Normalize → Run</h2>
+<form method="post">
+  <input type="hidden" name="action" value="benchmark_normalize">
+  <label>Role</label>
+  <input type="text" name="benchmark_role" value="{{ benchmark_form.role }}" required>
+  <label>Level (optional override)</label>
+  <select name="benchmark_level">
+    {% for level in levels %}
+      <option value="{{ level }}" {% if benchmark_form.level == level %}selected{% endif %}>{{ level if level else 'Auto-detect' }}</option>
+    {% endfor %}
+  </select>
+  <label>Country</label>
+  <select name="benchmark_country" required>
+    {% for country in countries %}
+      <option value="{{ country }}" {% if benchmark_form.country == country %}selected{% endif %}>{{ country }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Location</label>
+  <select name="benchmark_city">
+    {% set city_options = major_cities_by_country.get(benchmark_form.country, []) %}
+    <option value="">Select city</option>
+    {% for city in city_options %}
+      <option value="{{ city }}" {% if benchmark_form.city == city %}selected{% endif %}>{{ city }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Source</label>
+  <select name="benchmark_source" required>
+    {% for source in benchmark_sources %}
+      <option value="{{ source }}" {% if benchmark_form.source == source %}selected{% endif %}>{{ source }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Daily rates - Low / Medium / High</label>
+  <input type="number" step="0.01" min="0" name="benchmark_rate_low" value="{{ benchmark_form.rate_low }}" placeholder="Daily rate (Low)">
+  <input type="number" step="0.01" min="0" name="benchmark_rate_medium" value="{{ benchmark_form.rate_medium }}" placeholder="Daily rate (Medium)">
+  <input type="number" step="0.01" min="0" name="benchmark_rate_high" value="{{ benchmark_form.rate_high }}" placeholder="Daily rate (High)">
+
+  <label>Annual salaries - Low / Medium / High</label>
+  <input type="number" step="0.01" min="0" name="benchmark_salary_low" value="{{ benchmark_form.salary_low }}" placeholder="Annual salary (Low)">
+  <input type="number" step="0.01" min="0" name="benchmark_salary_medium" value="{{ benchmark_form.salary_medium }}" placeholder="Annual salary (Medium)">
+  <input type="number" step="0.01" min="0" name="benchmark_salary_high" value="{{ benchmark_form.salary_high }}" placeholder="Annual salary (High)">
+
+  <button type="submit">Normalize Role</button>
+</form>
+
+{% if normalize_error %}<p class="error">{{ normalize_error }}</p>{% endif %}
+
+{% if normalize_result %}
+<div class="result">
+  <div><strong>Original Role:</strong> {{ normalize_result.original_role }}</div>
+  <div><strong>Mapped Role:</strong> {{ normalize_result.canonical_role }}</div>
+  <div><strong>Level:</strong> {{ normalize_result.seniority_level }} | <strong>Confidence:</strong> {{ normalize_result.confidence }}</div>
+  {% if normalize_result.is_unmapped %}
+  <p class="error">Role is unmapped. You can still run benchmark, but it will save as Unmapped Role.</p>
+  {% endif %}
+
+  <form method="post">
+    <input type="hidden" name="action" value="benchmark_run">
+    <input type="hidden" name="benchmark_role" value="{{ benchmark_form.role }}">
+    <input type="hidden" name="benchmark_level" value="{{ benchmark_form.level }}">
+    <input type="hidden" name="benchmark_country" value="{{ benchmark_form.country }}">
+    <input type="hidden" name="benchmark_source" value="{{ benchmark_form.source }}">
+    <input type="hidden" name="benchmark_rate_low" value="{{ benchmark_form.rate_low }}">
+    <input type="hidden" name="benchmark_rate_medium" value="{{ benchmark_form.rate_medium }}">
+    <input type="hidden" name="benchmark_rate_high" value="{{ benchmark_form.rate_high }}">
+    <input type="hidden" name="benchmark_salary_low" value="{{ benchmark_form.salary_low }}">
+    <input type="hidden" name="benchmark_salary_medium" value="{{ benchmark_form.salary_medium }}">
+    <input type="hidden" name="benchmark_salary_high" value="{{ benchmark_form.salary_high }}">
+    <button type="submit">Run Benchmark</button>
+  </form>
+</div>
+{% endif %}
+
+{% if benchmark_error %}<p class="error">{{ benchmark_error }}</p>{% endif %}
+{% if result %}
+<div class="result">
+  <div><strong>Role:</strong> {{ result.role }} ({{ result.level }})</div>
+  <div><strong>P25 / Median / P75:</strong> {{ result.p25 }} / {{ result.median }} / {{ result.p75 }} {{ result.currency }}</div>
+  <div><strong>Annual Equivalent (P25 / Median / P75):</strong> {{ result.p25_annual }} / {{ result.median_annual }} / {{ result.p75_annual }} {{ result.currency }}</div>
+  <div><strong>Market Mode:</strong> {{ result.market_mode }} | <strong>Confidence:</strong> {{ result.confidence }}</div>
+  <div><strong>Data Points:</strong> {{ result.data_points }} | <strong>Record ID:</strong> {{ result.benchmark_id }}</div>
+</div>
+{% endif %}
+{% endblock %}

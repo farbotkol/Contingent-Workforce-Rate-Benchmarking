@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>AI/Web Scanner → Normalize → Benchmark</h2>
+<form method="post" enctype="multipart/form-data">
+  <label>Default Country</label>
+  <select name="upload_country" required>
+    {% for country in countries %}
+      <option value="{{ country }}" {% if upload_form.country == country %}selected{% endif %}>{{ country }}</option>
+    {% endfor %}
+  </select>
+  <label>Default daily rates</label>
+  <textarea name="default_rates" rows="2">{{ upload_form.default_rates }}</textarea>
+  <label>Default annual salaries</label>
+  <textarea name="default_salaries" rows="2">{{ upload_form.default_salaries }}</textarea>
+  <label><input type="checkbox" name="use_internet_benchmarks" {% if upload_form.use_internet %}checked{% endif %}> Use internet benchmark search</label>
+  <label><input type="checkbox" name="use_ai_estimate" {% if upload_form.use_ai_estimate %}checked{% endif %}> Use AI estimated rates fallback</label>
+  <label>CSV File</label>
+  <input type="file" name="normalize_file" accept=".csv">
+  <div class="small">Required columns: <strong>title</strong>, <strong>description</strong>.</div>
+  <a href="{{ url_for('download_sample', sample_key='upload-normalize') }}"><button type="button">Download Sample Upload CSV</button></a>
+  <button type="submit" name="action" value="upload_normalize">Scan and Normalize</button>
+  <button type="submit" name="action" value="upload_normalize_sample">Load Sample File</button>
+</form>
+{% if normalize_error %}<p class="error">{{ normalize_error }}</p>{% endif %}
+{% if normalize_result %}
+<div class="result">
+  <div><strong>Normalized Rows:</strong> {{ normalize_result.count }}</div>
+  <form method="post">
+    <input type="hidden" name="action" value="upload_benchmark_accepted">
+    <input type="hidden" name="normalized_payload_b64" value="{{ normalize_result.payload_b64 }}">
+    <label>Benchmark Country Fallback</label>
+    <select name="accepted_country" required>
+      {% for country in countries %}
+        <option value="{{ country }}" {% if normalize_result.country == country %}selected{% endif %}>{{ country }}</option>
+      {% endfor %}
+    </select>
+    <label>Default daily rates for accepted rows</label>
+    <textarea name="accepted_default_rates" rows="2">{{ normalize_result.default_rates }}</textarea>
+    <label>Default annual salaries for accepted rows</label>
+    <textarea name="accepted_default_salaries" rows="2">{{ normalize_result.default_salaries }}</textarea>
+    <label><input type="checkbox" name="accepted_use_internet" {% if normalize_result.use_internet %}checked{% endif %}> Use internet benchmark search</label>
+    <label><input type="checkbox" name="accepted_use_ai_estimate" {% if normalize_result.use_ai_estimate %}checked{% endif %}> Use AI estimated rates fallback</label>
+    <table>
+      <thead><tr><th>Accept</th><th>Line</th><th>Title</th><th>Description</th><th>Role</th><th>Level</th><th>Confidence</th></tr></thead>
+      <tbody>
+        {% for row in normalize_result.rows %}
+        <tr>
+          <td><input type="checkbox" name="accepted_lines" value="{{ row.line }}" checked></td>
+          <td>{{ row.line }}</td>
+          <td>{{ row.title }}</td>
+          <td>{{ row.description }}</td>
+          <td>{{ row.canonical_role }}</td>
+          <td>{{ row.seniority_level }}</td>
+          <td>{{ row.confidence }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit">Benchmark Accepted Rows</button>
+  </form>
+</div>
+{% endif %}
+{% if benchmark_error %}<p class="error">{{ benchmark_error }}</p>{% endif %}
+{% if benchmark_result %}
+<div class="result">
+  <div><strong>Success:</strong> {{ benchmark_result.success_count }} | <strong>Errors:</strong> {{ benchmark_result.error_count }}</div>
+  <table>
+    <thead><tr><th>Line</th><th>Status</th><th>Role</th><th>Country</th><th>Median</th><th>Range</th><th>Mode</th><th>Internet Points</th><th>AI Points</th><th>Details</th></tr></thead>
+    <tbody>
+      {% for row in benchmark_result.rows %}
+      <tr>
+        <td>{{ row.line }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.role if row.role else '-' }}</td>
+        <td>{{ row.country if row.country else '-' }}</td>
+        <td>{% if row.status == 'ok' %}{{ row.median }} {{ row.currency }}{% else %}-{% endif %}</td>
+        <td>{% if row.status == 'ok' %}{{ row.p25 }} - {{ row.p75 }}{% else %}-{% endif %}</td>
+        <td>{{ row.market_mode if row.status == 'ok' else '-' }}</td>
+        <td>{% if row.status == 'ok' %}{{ row.internet_points }}{% else %}-{% endif %}</td>
+        <td>{% if row.status == 'ok' %}{{ row.ai_points }}{% else %}-{% endif %}</td>
+        <td>{% if row.status == 'ok' %}ID {{ row.benchmark_id }} ({{ row.data_points }} pts){% else %}{{ row.message }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

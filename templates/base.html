@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ branding.title }}</title>
+    <style>
+      :root {
+        --brand-primary: {{ branding.colors.primary }};
+        --brand-accent: {{ branding.colors.accent }};
+        --brand-bg: {{ branding.colors.bg }};
+        --text: {{ branding.colors.text }};
+        --muted: {{ branding.colors.muted }};
+        --card: {{ branding.colors.card }};
+        --border: {{ branding.colors.border }};
+        --top-strip-text: {{ branding.colors.top_strip_text }};
+        --button-text: {{ branding.colors.button_text }};
+      }
+      body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: var(--text); background: var(--brand-bg); }
+      .top-strip { background: var(--brand-accent); color: var(--top-strip-text); font-size: 0.82rem; text-align: center; padding: 0.45rem 1rem; font-weight: 700; }
+      .top-strip a { color: var(--top-strip-text); text-decoration: underline; }
+      header { background: #ffffff; color: var(--text); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+      .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+      .brand-lockup { display: flex; align-items: center; gap: 0.9rem; text-decoration: none; color: var(--text); }
+      .brand-logo { height: 40px; width: auto; display: block; }
+      .brand-meta { display: flex; flex-direction: column; }
+      .brand-meta strong { font-size: 1rem; line-height: 1.1; color: var(--brand-primary); }
+      .brand-meta span { font-size: 0.82rem; color: var(--muted); }
+      .brand-cta { color: var(--button-text); background: var(--brand-accent); text-decoration: none; border: 1px solid var(--brand-accent); border-radius: 8px; padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700; }
+      .brand-cta:hover { filter: brightness(0.96); }
+      header h1 { margin: 0; font-size: 1.2rem; }
+      header p { margin: 0.3rem 0 0; font-size: 0.9rem; color: #d7ebfa; }
+      .brand-link { color: #d7ebfa; text-decoration: underline; }
+      .brand-link:hover { color: #ffffff; }
+      nav { margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+      nav a { color: var(--brand-primary); text-decoration: none; font-size: 0.86rem; padding: 0.4rem 0.65rem; border: 1px solid transparent; border-radius: 6px; font-weight: 700; }
+      nav a:hover { background: #eceff2; }
+      nav a.active { background: var(--brand-primary); border-color: var(--brand-primary); color: #ffffff; }
+      main { max-width: 1100px; margin: 1.2rem auto; padding: 0 1rem; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+      h2 { margin-top: 0; font-size: 1rem; color: var(--brand-primary); }
+      label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--muted); }
+      input, select, textarea, button { width: 100%; box-sizing: border-box; margin-bottom: 0.75rem; padding: 0.5rem; border: 1px solid #cfd9e5; border-radius: 6px; font-size: 0.9rem; }
+      button { background: var(--brand-accent); color: var(--button-text); border: none; cursor: pointer; font-weight: 700; }
+      button:hover { filter: brightness(0.96); }
+      .error { color: #b91c1c; font-size: 0.85rem; }
+      .result { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.9rem; }
+      .small { font-size: 0.82rem; color: var(--muted); }
+      table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+      th, td { border-bottom: 1px solid var(--border); padding: 0.4rem; text-align: left; }
+      th { color: var(--brand-primary); }
+      footer { max-width: 1100px; margin: 0 auto 1rem; padding: 0 1rem; color: var(--muted); font-size: 0.82rem; }
+      footer a { color: var(--brand-primary); text-decoration: none; font-weight: 700; }
+      footer a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="top-strip">{{ branding.top_strip_text }} <a href="{{ branding.brand_url }}" target="_blank" rel="noopener noreferrer">{{ branding.top_strip_link_text }}</a></div>
+    <header>
+      <div class="brand-row">
+        <a class="brand-lockup" href="{{ branding.brand_url }}" target="_blank" rel="noopener noreferrer">
+          <img class="brand-logo" src="{{ branding.logo_url }}" alt="{{ branding.logo_alt }}">
+          <span class="brand-meta">
+            <strong>{{ branding.brand_name }}</strong>
+            <span>{{ branding.tagline }}</span>
+          </span>
+        </a>
+        <a class="brand-cta" href="{{ branding.brand_url }}" target="_blank" rel="noopener noreferrer">{{ branding.cta_text }}</a>
+      </div>
+      <nav>
+        <a href="/analytics" class="{% if request.path == '/analytics' %}active{% endif %}">Analytics</a>
+        <a href="/all-benchmarks" class="{% if request.path == '/all-benchmarks' %}active{% endif %}">All Benchmarks</a>
+        <a href="/benchmark" class="{% if request.path == '/benchmark' %}active{% endif %}">Benchmark</a>
+        <a href="/salary-compare" class="{% if request.path == '/salary-compare' %}active{% endif %}">Salary Compare</a>
+        <a href="/bulk" class="{% if request.path == '/bulk' %}active{% endif %}">Bulk</a>
+        <a href="/upload" class="{% if request.path == '/upload' %}active{% endif %}">AI/Web Scanner</a>
+        <a href="/taxonomy" class="{% if request.path == '/taxonomy' %}active{% endif %}">Taxonomy</a>
+        <a href="/normalize" class="{% if request.path == '/normalize' %}active{% endif %}">Normalize</a>
+        <a href="/convert" class="{% if request.path == '/convert' %}active{% endif %}">Convert</a>
+        <a href="/history" class="{% if request.path == '/history' %}active{% endif %}">History</a>
+      </nav>
+    </header>
+    <main>
+      <section class="card">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+    <footer>
+      {{ branding.footer_prefix }} • <a href="{{ branding.brand_url }}" target="_blank" rel="noopener noreferrer">{{ branding.footer_url_text }}</a>
+    </footer>
+  </body>
+</html>

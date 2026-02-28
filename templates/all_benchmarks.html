@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>All Saved Benchmarks</h2>
+<p class="small">Filter and browse all benchmarks, newest first.</p>
+
+<form method="get">
+  <label>Role contains</label>
+  <input type="text" name="role_query" value="{{ filters.role_query }}" placeholder="e.g. Software Engineer">
+
+  <label>Level</label>
+  <select name="level">
+    <option value="">All levels</option>
+    {% for level in filter_options.levels %}
+      <option value="{{ level }}" {% if filters.level == level %}selected{% endif %}>{{ level }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Country</label>
+  <select name="country">
+    <option value="">All countries</option>
+    {% for country in filter_options.countries %}
+      <option value="{{ country }}" {% if filters.country == country %}selected{% endif %}>{{ country }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Source</label>
+  <select name="source">
+    <option value="">All sources</option>
+    {% for source in filter_options.sources %}
+      <option value="{{ source }}" {% if filters.source == source %}selected{% endif %}>{{ source }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Rows per page</label>
+  <select name="page_size">
+    {% for size in [10, 25, 50, 100] %}
+      <option value="{{ size }}" {% if page_size == size %}selected{% endif %}>{{ size }}</option>
+    {% endfor %}
+  </select>
+
+  <label>View</label>
+  <select name="view">
+    <option value="rates" {% if view_mode == 'rates' %}selected{% endif %}>Rates</option>
+    <option value="salaries" {% if view_mode == 'salaries' %}selected{% endif %}>Salaries</option>
+  </select>
+
+  <input type="hidden" name="page" value="1">
+  <input type="hidden" name="sort_by" value="{{ sort_by }}">
+  <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+  <button type="submit">Apply Filters</button>
+</form>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+{% if records %}
+<div class="result">
+  <div>
+    <strong>Total Records:</strong> {{ total_count }}
+    <span class="small">(Page {{ page }} of {{ total_pages }})</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='timestamp', sort_dir='asc' if sort_by == 'timestamp' and sort_dir == 'desc' else 'desc') }}">Date{% if sort_by == 'timestamp' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='role', sort_dir='asc' if sort_by == 'role' and sort_dir == 'desc' else 'desc') }}">Role{% if sort_by == 'role' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th>Job Family</th>
+        <th>Job Function</th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='level', sort_dir='asc' if sort_by == 'level' and sort_dir == 'desc' else 'desc') }}">Level{% if sort_by == 'level' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='country', sort_dir='asc' if sort_by == 'country' and sort_dir == 'desc' else 'desc') }}">Country{% if sort_by == 'country' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='city', sort_dir='asc' if sort_by == 'city' and sort_dir == 'desc' else 'desc') }}">Location{% if sort_by == 'city' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='source', sort_dir='asc' if sort_by == 'source' and sort_dir == 'desc' else 'desc') }}">Source{% if sort_by == 'source' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='currency', sort_dir='asc' if sort_by == 'currency' and sort_dir == 'desc' else 'desc') }}">Currency{% if sort_by == 'currency' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='median', sort_dir='asc' if sort_by == 'median' and sort_dir == 'desc' else 'desc') }}">Median ({{ 'Salary' if view_mode == 'salaries' else 'Rate' }}){% if sort_by == 'median' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th>Range (P25-P75)</th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='market_mode', sort_dir='asc' if sort_by == 'market_mode' and sort_dir == 'desc' else 'desc') }}">Mode{% if sort_by == 'market_mode' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+        <th><a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, page=1, sort_by='data_points', sort_dir='asc' if sort_by == 'data_points' and sort_dir == 'desc' else 'desc') }}">Points{% if sort_by == 'data_points' %} {{ '↑' if sort_dir == 'asc' else '↓' }}{% endif %}</a></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in records %}
+      <tr>
+        <td>{{ row.timestamp[:10] }}</td>
+        <td>{{ row.role }}</td>
+        <td>{{ row.taxonomy_family }}</td>
+        <td>{{ row.taxonomy_function }}</td>
+        <td>{{ row.level }}</td>
+        <td>{{ row.country }}</td>
+        <td>{{ row.city or '-' }}</td>
+        <td>{{ row.source }}</td>
+        <td>{{ row.currency }}</td>
+        <td>{{ row.display_median }}</td>
+        <td>{{ row.display_p25 }} - {{ row.display_p75 }}</td>
+        <td>{{ row.market_mode }}</td>
+        <td>{{ row.data_points }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="result">
+    <div class="small">Showing: {{ 'Annual salary equivalents' if view_mode == 'salaries' else 'Daily rates' }}</div>
+    {% if page > 1 %}
+      <a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, sort_by=sort_by, sort_dir=sort_dir, page=page-1) }}">← Previous</a>
+    {% else %}
+      <span class="small">← Previous</span>
+    {% endif %}
+
+    <span class="small" style="margin: 0 0.75rem;">Page {{ page }} / {{ total_pages }}</span>
+
+    {% if page < total_pages %}
+      <a href="{{ url_for('all_benchmarks_page', role_query=filters.role_query, level=filters.level, country=filters.country, source=filters.source, page_size=page_size, view=view_mode, sort_by=sort_by, sort_dir=sort_dir, page=page+1) }}">Next →</a>
+    {% else %}
+      <span class="small">Next →</span>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<p class="small">No saved benchmarks found.</p>
+{% endif %}
+{% endblock %}

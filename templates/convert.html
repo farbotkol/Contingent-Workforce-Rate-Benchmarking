@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Convert Salary</h2>
+<form method="post">
+  <label>Annual Salary</label>
+  <input type="number" step="0.01" name="convert_salary" value="{{ convert_form.salary }}" required>
+  <label>Country</label>
+  <select name="convert_country" required>
+    {% for country in countries %}
+      <option value="{{ country }}" {% if convert_form.country == country %}selected{% endif %}>{{ country }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Convert</button>
+</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if result %}
+<div class="result">
+  <div><strong>Daily Rate:</strong> {{ result.daily_rate }} {{ result.currency }}</div>
+  <div><strong>Multiplier:</strong> {{ result.multiplier_used }} | <strong>Working Days:</strong> {{ result.working_days }}</div>
+  <div class="small">Rate Type: {{ result.rate_type }}</div>
+</div>
+{% endif %}
+{% endblock %}

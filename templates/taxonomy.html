@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Taxonomy &amp; Normalisation Rules</h2>
+<p class="small">Review and extend role normalisation data. This tab supports role-to-canonical mapping, job family/function taxonomy rules, and live test normalisation.</p>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+{% if success %}
+<p class="small"><strong>{{ success }}</strong></p>
+{% endif %}
+
+<div class="result">
+  <h3>Test Role Normalisation</h3>
+  <form method="post">
+    <input type="hidden" name="action" value="taxonomy_test">
+    <label>Job Title / Role</label>
+    <input type="text" name="test_title" value="{{ test_form.title }}" placeholder="e.g. Nurse Unit Manager" required>
+
+    <label>Seniority Override (optional)</label>
+    <select name="test_level">
+      {% for level in levels %}
+      <option value="{{ level }}" {% if test_form.level == level %}selected{% endif %}>{{ level if level else 'Auto-detect' }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit">Run Test Normalisation</button>
+  </form>
+
+  {% if test_result %}
+  <div class="result">
+    <div><strong>Original Title:</strong> {{ test_result.original_title }}</div>
+    <div><strong>Normalised Role:</strong> {{ test_result.normalised_role }}</div>
+    <div><strong>Job Family:</strong> {{ test_result.job_family }}</div>
+    <div><strong>Job Function:</strong> {{ test_result.job_function }}</div>
+    <div><strong>Seniority:</strong> {{ test_result.seniority_level }} (confidence {{ test_result.normalisation_confidence }})</div>
+    <div><strong>Matched Taxonomy Rule:</strong> {{ test_result.matched_rule }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="result">
+  <h3>Extend Taxonomy Rules (Job Family / Job Function)</h3>
+  <form method="post">
+    <input type="hidden" name="action" value="taxonomy_add_rule">
+
+    <label>Rule Name</label>
+    <input type="text" name="rule_name" value="{{ rule_form.name }}" placeholder="e.g. Healthcare Management">
+
+    <label>Job Family</label>
+    <input type="text" name="rule_family" value="{{ rule_form.family }}" placeholder="e.g. Healthcare &amp; Medical" required>
+
+    <label>Job Function</label>
+    <input type="text" name="rule_function" value="{{ rule_form.function }}" placeholder="e.g. Nursing Leadership" required>
+
+    <label>Keywords (comma/newline separated)</label>
+    <textarea name="rule_keywords" rows="3" placeholder="nurse manager, nurse unit manager, clinical lead" required>{{ rule_form.keywords }}</textarea>
+
+    <button type="submit">Add Taxonomy Rule</button>
+  </form>
+
+  <h3>Current Taxonomy Rules</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Rule</th>
+        <th>Job Family</th>
+        <th>Job Function</th>
+        <th>Keywords</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rule_rows %}
+      <tr>
+        <td>{{ row.name or '-' }}</td>
+        <td>{{ row.family }}</td>
+        <td>{{ row.function }}</td>
+        <td>{{ (row.keywords or [])|join(', ') }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <td>Default</td>
+        <td>{{ taxonomy_rules.default.family }}</td>
+        <td>{{ taxonomy_rules.default.function }}</td>
+        <td>-</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="result">
+  <h3>Extend Normalised Role Mappings</h3>
+  <form method="post">
+    <input type="hidden" name="action" value="taxonomy_add_mapping">
+
+    <label>Canonical Role</label>
+    <input list="canonical-role-list" name="mapping_canonical_role" value="{{ mapping_form.canonical_role }}" placeholder="Select or type canonical role" required>
+    <datalist id="canonical-role-list">
+      {% for role in canonical_roles %}
+      <option value="{{ role }}"></option>
+      {% endfor %}
+    </datalist>
+
+    <label>Alias / External Job Title</label>
+    <input type="text" name="mapping_alias" value="{{ mapping_form.alias }}" placeholder="e.g. Registered Nurse Unit Manager" required>
+
+    <button type="submit">Add Role Mapping Alias</button>
+  </form>
+
+  <h3>Current Canonical Role Mappings</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Canonical Role</th>
+        <th>Alias Count</th>
+        <th>Aliases</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in mapping_rows %}
+      <tr>
+        <td>{{ row.canonical_role }}</td>
+        <td>{{ row.alias_count }}</td>
+        <td>{{ row.aliases|join(', ') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

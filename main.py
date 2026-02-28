@@ -152,6 +152,7 @@ def benchmark(
             role=canonical_role,
             level=seniority_level,
             country=country,
+            source='AI',
             currency=currency,
             p25=rate_bands['p25_daily_rate'],
             median=rate_bands['median_daily_rate'],

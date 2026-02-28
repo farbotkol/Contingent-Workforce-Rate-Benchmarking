@@ -1,0 +1,1500 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Revenue Stability &amp; Talent Risk Cockpit</h2>
+<p class="small">Layered salary and rate benchmarking analytics for contingent workforce strategy, margin protection, and renewal resilience.</p>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+{% if analytics_rows %}
+<style>
+  .analytics-filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.6rem 0.8rem;
+    align-items: end;
+  }
+
+  .analytics-filter-item {
+    min-width: 0;
+  }
+
+  .analytics-filter-item label {
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+
+  .analytics-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.6rem;
+  }
+
+  .analytics-tab-panel {
+    display: none;
+  }
+
+  .analytics-tab-panel.active {
+    display: block;
+  }
+</style>
+
+<div class="result">
+  <div class="analytics-filters-grid">
+    <div class="analytics-filter-item">
+      <label>Category</label>
+      <select id="category-select">
+        <option value="strategic" selected>Strategic</option>
+        <option value="commercial">Commercial</option>
+        <option value="talent">Talent Risk</option>
+        <option value="forecasting">Forecasting</option>
+        <option value="compensation">Compensation</option>
+        <option value="governance">Governance</option>
+        <option value="advanced">AI / Advanced</option>
+      </select>
+    </div>
+
+    <div class="analytics-filter-item">
+      <label>Value View</label>
+      <select id="value-view-select">
+        <option value="rates">Daily Rates</option>
+        <option value="salaries">Annual Salary Equivalents</option>
+      </select>
+    </div>
+
+    <div class="analytics-filter-item">
+      <label>Chart Grouping</label>
+      <select id="group-by-select">
+        <option value="role_family">By Job Family</option>
+        <option value="role_function">By Job Function</option>
+        <option value="role" selected>By Role</option>
+        <option value="level">Level</option>
+        <option value="country">Country</option>
+        <option value="city">Location</option>
+      </select>
+    </div>
+
+    <div class="analytics-filter-item">
+      <label>Location</label>
+      <select id="location-filter">
+        <option value="">All Locations</option>
+      </select>
+    </div>
+
+    <div class="analytics-filter-item">
+      <label>Job Family</label>
+      <select id="role-family-filter">
+        <option value="">All Families</option>
+      </select>
+    </div>
+
+    <div class="analytics-filter-item">
+      <label>Job Function</label>
+      <select id="role-function-filter">
+        <option value="">All Functions</option>
+      </select>
+    </div>
+
+    <div class="analytics-filter-item">
+      <label>Role</label>
+      <select id="role-filter">
+        <option value="">All Roles</option>
+      </select>
+    </div>
+
+    <div class="analytics-filter-item">
+      <label>Chart Grid Columns</label>
+      <select id="grid-columns-select">
+        <option value="1">1 Column</option>
+        <option value="2">2 Columns</option>
+        <option value="3" selected>3 Columns</option>
+        <option value="4">4 Columns</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="analytics-filter-actions">
+    <button id="clear-filters-btn" type="button">Clear Selection</button>
+    <div id="active-filters" class="small"></div>
+  </div>
+</div>
+
+<div class="result" id="analytics-kpis"></div>
+
+<section class="analytics-tab-panel active" data-tab-panel="strategic">
+  <h3>Strategic Layer</h3>
+  <div class="charts-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+    <div class="result">
+      <h3 style="margin-top: 0;">1) Percentile Positioning (Role Bands)</h3>
+      <canvas id="chart-percentile"></canvas>
+    </div>
+
+    <div class="result">
+      <h3 style="margin-top: 0;">2) Compression Analysis (Pay Range Spread %)</h3>
+      <canvas id="chart-compression"></canvas>
+    </div>
+
+    <div class="result">
+      <h3 style="margin-top: 0;">3) Rate Inflation Trend (Monthly)</h3>
+      <canvas id="chart-inflation"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="analytics-tab-panel" data-tab-panel="commercial">
+  <h3>Commercial &amp; Margin Intelligence</h3>
+  <div class="charts-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+    <div class="result">
+      <h3 style="margin-top: 0;">4) Bill vs Pay Spread (Modeled Gross Margin %)</h3>
+      <canvas id="chart-margin"></canvas>
+    </div>
+
+    <div class="result">
+      <h3 style="margin-top: 0;">5) Renewal Risk Index</h3>
+      <canvas id="chart-renewal"></canvas>
+    </div>
+
+    <div class="result">
+      <h3 style="margin-top: 0;">6) Geographic Arbitrage Opportunity</h3>
+      <canvas id="chart-arbitrage"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="analytics-tab-panel" data-tab-panel="talent">
+  <h3>Talent Risk &amp; Workforce Stability</h3>
+  <div class="charts-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem;">
+    <div class="result">
+      <h3 style="margin-top: 0;">7) Attrition Correlation (Percentile Band Proxy)</h3>
+      <canvas id="chart-attrition"></canvas>
+    </div>
+    <div class="result">
+      <h3 style="margin-top: 0;">8) Offer Decline Diagnostics (Salary Gap Threshold)</h3>
+      <canvas id="chart-offer"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="analytics-tab-panel" data-tab-panel="forecasting">
+  <h3>Forecasting &amp; Predictive Modelling</h3>
+  <div class="charts-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+    <div class="result">
+      <h3 style="margin-top: 0;">9) 12-Month Salary Escalation Forecast</h3>
+      <canvas id="chart-forecast"></canvas>
+    </div>
+    <div class="result">
+      <h3 style="margin-top: 0;">10) Cost of Replacement vs Proactive Uplift</h3>
+      <canvas id="chart-replacement"></canvas>
+    </div>
+    <div class="result">
+      <h3 style="margin-top: 0;">11) Scenario Planning</h3>
+      <canvas id="chart-scenarios"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="analytics-tab-panel" data-tab-panel="compensation">
+  <h3>Compensation Architecture</h3>
+  <div class="charts-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem;">
+    <div class="result">
+      <h3 style="margin-top: 0;">Pay Bands (Min / Mid / Max)</h3>
+      <canvas id="chart-paybands"></canvas>
+    </div>
+    <div class="result">
+      <h3 style="margin-top: 0;">Skill Premium Index</h3>
+      <canvas id="chart-skill"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="analytics-tab-panel" data-tab-panel="governance">
+  <h3>Governance &amp; Board Insights</h3>
+  <div class="charts-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+    <div class="result">
+      <h3 style="margin-top: 0;">Workforce Below P50 (%)</h3>
+      <canvas id="chart-below-p50"></canvas>
+    </div>
+    <div class="result">
+      <h3 style="margin-top: 0;">Geographic Rate Volatility</h3>
+      <canvas id="chart-volatility"></canvas>
+    </div>
+    <div class="result">
+      <h3 style="margin-top: 0;">Market Mode Mix</h3>
+      <canvas id="chart-mode"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="analytics-tab-panel" data-tab-panel="advanced">
+  <h3>AI / Advanced Enhancements</h3>
+  <div class="charts-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem;">
+    <div class="result">
+      <h3 style="margin-top: 0;">Salary Risk Score (Composite)</h3>
+      <canvas id="chart-salary-risk"></canvas>
+    </div>
+    <div class="result">
+      <h3 style="margin-top: 0;">Workforce Value Index</h3>
+      <canvas id="chart-value"></canvas>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  function classifyRoleSeek(rawRole) {
+    const role = (rawRole || '').toLowerCase();
+    if (/(data|ai|ml|analytics|bi|scientist)/.test(role)) return { family: 'Information & Communication Technology', function: 'Data & AI' };
+    if (/(devops|platform|cloud|infrastructure|sre)/.test(role)) return { family: 'Information & Communication Technology', function: 'DevOps & Infrastructure' };
+    if (/(security|cyber|infosec|iam)/.test(role)) return { family: 'Information & Communication Technology', function: 'Security' };
+    if (/(architect|principal engineer|engineering manager|head of engineering)/.test(role)) return { family: 'Information & Communication Technology', function: 'Architecture & Leadership' };
+    if (/(developer|engineer|programmer|full stack|backend|frontend|software)/.test(role)) return { family: 'Information & Communication Technology', function: 'Software Engineering' };
+    if (/(salesforce|crm|mulesoft|certinia)/.test(role)) return { family: 'Information & Communication Technology', function: 'Enterprise Applications' };
+    if (/(payroll|workforce|hris|hcm)/.test(role)) return { family: 'Human Resources & Recruitment', function: 'Payroll & Workforce Operations' };
+    if (/(project|program|scrum|delivery)/.test(role)) return { family: 'Information & Communication Technology', function: 'Project Management' };
+    if (/(support|service desk|helpdesk|desktop)/.test(role)) return { family: 'Information & Communication Technology', function: 'Help Desk & IT Support' };
+    if (/(qa|test|automation tester)/.test(role)) return { family: 'Information & Communication Technology', function: 'Testing & QA' };
+    return { family: 'Information & Communication Technology', function: 'Other' };
+  }
+
+  const rows = {{ analytics_rows | tojson }}.map((row) => ({
+    ...row,
+    role_family: classifyRoleSeek(row.role).family,
+    role_function: classifyRoleSeek(row.role).function,
+  }));
+
+  const state = {
+    view: 'rates',
+    activeTab: 'strategic',
+    groupBy: 'role',
+    selected: {
+      country: null,
+      city: null,
+      level: null,
+      role_family: null,
+      role_function: null,
+      role: null,
+      market_mode: null,
+      month: null,
+    }
+  };
+
+  const chartRefs = {
+    percentile: null,
+    compression: null,
+    inflation: null,
+    margin: null,
+    renewal: null,
+    arbitrage: null,
+    attrition: null,
+    offer: null,
+    forecast: null,
+    replacement: null,
+    scenarios: null,
+    paybands: null,
+    skill: null,
+    belowP50: null,
+    volatility: null,
+    mode: null,
+    salaryRisk: null,
+    value: null,
+  };
+
+  function cssVar(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function toRgba(color, alpha) {
+    const hex = (color || '').trim();
+    if (/^#([0-9a-fA-F]{6})$/.test(hex)) {
+      const value = hex.slice(1);
+      const red = parseInt(value.slice(0, 2), 16);
+      const green = parseInt(value.slice(2, 4), 16);
+      const blue = parseInt(value.slice(4, 6), 16);
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    }
+    if (/^#([0-9a-fA-F]{3})$/.test(hex)) {
+      const value = hex.slice(1);
+      const red = parseInt(value[0] + value[0], 16);
+      const green = parseInt(value[1] + value[1], 16);
+      const blue = parseInt(value[2] + value[2], 16);
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    }
+    return color;
+  }
+
+  const colorPrimary = cssVar('--brand-primary', '#343a42');
+  const colorAccent = cssVar('--brand-accent', '#95d03a');
+  const colorMuted = toRgba(colorPrimary, 0.28);
+  const colorPrimarySoft = toRgba(colorPrimary, 0.55);
+  const colorAccentSoft = toRgba(colorAccent, 0.55);
+
+  Chart.defaults.color = cssVar('--text', '#2f343b');
+  Chart.defaults.borderColor = cssVar('--border', '#d9dde2');
+
+  function setActiveTab(tabKey) {
+    const panels = document.querySelectorAll('.analytics-tab-panel');
+    const categorySelect = document.getElementById('category-select');
+    state.activeTab = tabKey;
+
+    if (categorySelect && categorySelect.value !== tabKey) {
+      categorySelect.value = tabKey;
+    }
+
+    panels.forEach((panel) => {
+      panel.classList.toggle('active', panel.dataset.tabPanel === tabKey);
+    });
+
+    setTimeout(() => {
+      Object.values(chartRefs).forEach((chart) => {
+        if (chart) {
+          chart.resize();
+        }
+      });
+    }, 0);
+  }
+
+  function currentGroupKey(row) {
+    const key = state.groupBy;
+    if (key === 'role_family') return row.role_family || 'Unknown';
+    if (key === 'role_function') return row.role_function || 'Unknown';
+    if (key === 'level') return row.level || 'Unknown';
+    if (key === 'country') return row.country || 'Unknown';
+    if (key === 'city') return row.city || 'Unknown';
+    return row.role || 'Unknown';
+  }
+
+  function selectionKeyForGroupBy() {
+    if (state.groupBy === 'role_family') return 'role_family';
+    if (state.groupBy === 'role_function') return 'role_function';
+    if (state.groupBy === 'level') return 'level';
+    if (state.groupBy === 'country') return 'country';
+    if (state.groupBy === 'city') return 'city';
+    return 'role';
+  }
+
+  function populateLocationFilter() {
+    const locationSelect = document.getElementById('location-filter');
+    const currentLocation = state.selected.city || '';
+    const scopedRows = rows.filter((row) => !state.selected.country || row.country === state.selected.country);
+    const locations = Array.from(new Set(scopedRows.map((row) => row.city).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+    locationSelect.innerHTML = '<option value="">All Locations</option>';
+    locations.forEach((location) => {
+      const option = document.createElement('option');
+      option.value = location;
+      option.textContent = location;
+      locationSelect.appendChild(option);
+    });
+
+    if (currentLocation && locations.includes(currentLocation)) {
+      locationSelect.value = currentLocation;
+    } else {
+      state.selected.city = null;
+      locationSelect.value = '';
+    }
+  }
+
+  function selectedValueForGroupBy() {
+    return state.selected[selectionKeyForGroupBy()] || null;
+  }
+
+  function populateRoleFilters() {
+    const familySelect = document.getElementById('role-family-filter');
+    const functionSelect = document.getElementById('role-function-filter');
+    const roleSelect = document.getElementById('role-filter');
+    const currentFamily = state.selected.role_family || '';
+    const currentFunction = state.selected.role_function || '';
+    const currentRole = state.selected.role || '';
+
+    const families = Array.from(new Set(rows.map((row) => row.role_family).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+    familySelect.innerHTML = '<option value="">All Families</option>';
+    families.forEach((family) => {
+      const option = document.createElement('option');
+      option.value = family;
+      option.textContent = family;
+      familySelect.appendChild(option);
+    });
+
+    const functionRows = rows.filter((row) => !currentFamily || row.role_family === currentFamily);
+    const functions = Array.from(new Set(functionRows.map((row) => row.role_function).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+    functionSelect.innerHTML = '<option value="">All Functions</option>';
+    functions.forEach((func) => {
+      const option = document.createElement('option');
+      option.value = func;
+      option.textContent = func;
+      functionSelect.appendChild(option);
+    });
+
+    const roleRows = rows.filter((row) => {
+      return (!currentFamily || row.role_family === currentFamily)
+        && (!currentFunction || row.role_function === currentFunction);
+    });
+    const roles = Array.from(new Set(roleRows.map((row) => row.role).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+    roleSelect.innerHTML = '<option value="">All Roles</option>';
+    roles.forEach((role) => {
+      const option = document.createElement('option');
+      option.value = role;
+      option.textContent = role;
+      roleSelect.appendChild(option);
+    });
+
+    familySelect.value = currentFamily;
+    functionSelect.value = currentFunction;
+    roleSelect.value = currentRole;
+  }
+
+  function syncFilterControls() {
+    const categorySelect = document.getElementById('category-select');
+    const locationSelect = document.getElementById('location-filter');
+    const familySelect = document.getElementById('role-family-filter');
+    const functionSelect = document.getElementById('role-function-filter');
+    const roleSelect = document.getElementById('role-filter');
+    const groupBySelect = document.getElementById('group-by-select');
+
+    categorySelect.value = state.activeTab;
+    locationSelect.value = state.selected.city || '';
+    familySelect.value = state.selected.role_family || '';
+    functionSelect.value = state.selected.role_function || '';
+    roleSelect.value = state.selected.role || '';
+    groupBySelect.value = state.groupBy;
+  }
+
+  function metricValue(row) {
+    if (state.view === 'salaries') {
+      return row.median_annual_salary;
+    }
+    return row.median_daily_rate;
+  }
+
+  function filteredRows() {
+    return rows.filter((row) => {
+      return (!state.selected.country || row.country === state.selected.country)
+        && (!state.selected.city || row.city === state.selected.city)
+        && (!state.selected.level || row.level === state.selected.level)
+        && (!state.selected.role_family || row.role_family === state.selected.role_family)
+        && (!state.selected.role_function || row.role_function === state.selected.role_function)
+        && (!state.selected.role || row.role === state.selected.role)
+        && (!state.selected.market_mode || row.market_mode === state.selected.market_mode)
+        && (!state.selected.month || row.month === state.selected.month);
+    });
+  }
+
+  function groupAverage(data, key) {
+    const bucket = new Map();
+    data.forEach((row) => {
+      const groupKey = row[key] || 'Unknown';
+      const value = metricValue(row);
+      if (value == null) return;
+      const current = bucket.get(groupKey) || { sum: 0, count: 0 };
+      current.sum += Number(value);
+      current.count += 1;
+      bucket.set(groupKey, current);
+    });
+
+    return Array.from(bucket.entries())
+      .map(([label, values]) => ({
+        label,
+        value: values.count > 0 ? Number((values.sum / values.count).toFixed(2)) : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }
+
+  function groupStdDev(data, key) {
+    const bucket = new Map();
+    data.forEach((row) => {
+      const groupKey = row[key] || 'Unknown';
+      const value = Number(metricValue(row));
+      if (!Number.isFinite(value)) return;
+      const arr = bucket.get(groupKey) || [];
+      arr.push(value);
+      bucket.set(groupKey, arr);
+    });
+
+    return Array.from(bucket.entries()).map(([label, arr]) => {
+      if (!arr.length) return { label, value: 0 };
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      const variance = arr.reduce((acc, value) => acc + Math.pow(value - mean, 2), 0) / arr.length;
+      return { label, value: Number(Math.sqrt(variance).toFixed(2)) };
+    }).sort((a, b) => b.value - a.value);
+  }
+
+  function groupCount(data, key) {
+    const bucket = new Map();
+    data.forEach((row) => {
+      const groupKey = row[key] || 'Unknown';
+      bucket.set(groupKey, (bucket.get(groupKey) || 0) + 1);
+    });
+    return Array.from(bucket.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }
+
+  function groupSpreadPercentage(data, key) {
+    const bucket = new Map();
+    data.forEach((row) => {
+      const p25 = Number(row.p25_daily_rate);
+      const p75 = Number(row.p75_daily_rate);
+      if (!Number.isFinite(p25) || !Number.isFinite(p75) || p25 <= 0) {
+        return;
+      }
+
+      const spreadPct = ((p75 - p25) / p25) * 100;
+      if (!Number.isFinite(spreadPct)) {
+        return;
+      }
+
+      const groupKey = row[key] || 'Unknown';
+      const current = bucket.get(groupKey) || { sum: 0, count: 0 };
+      current.sum += spreadPct;
+      current.count += 1;
+      bucket.set(groupKey, current);
+    });
+
+    return Array.from(bucket.entries())
+      .map(([label, values]) => ({
+        label,
+        value: values.count > 0 ? Number((values.sum / values.count).toFixed(2)) : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }
+
+  function percentile(values, p) {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const rank = (p / 100) * (sorted.length - 1);
+    const lower = Math.floor(rank);
+    const upper = Math.ceil(rank);
+    if (lower === upper) return sorted[lower];
+    const weight = rank - lower;
+    return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+  }
+
+  function monthShift(month, offset) {
+    const [year, monthPart] = month.split('-').map(Number);
+    if (!Number.isFinite(year) || !Number.isFinite(monthPart)) {
+      return month;
+    }
+    const date = new Date(Date.UTC(year, monthPart - 1 + offset, 1));
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+
+  function linearForecast(values, periods) {
+    if (values.length < 2) {
+      const last = values.length ? values[values.length - 1] : 0;
+      return Array.from({ length: periods }, () => last);
+    }
+    let sumX = 0;
+    let sumY = 0;
+    let sumXY = 0;
+    let sumXX = 0;
+    const n = values.length;
+
+    values.forEach((y, index) => {
+      const x = index + 1;
+      sumX += x;
+      sumY += y;
+      sumXY += x * y;
+      sumXX += x * x;
+    });
+
+    const denominator = (n * sumXX) - (sumX * sumX);
+    const slope = denominator === 0 ? 0 : ((n * sumXY) - (sumX * sumY)) / denominator;
+    const intercept = (sumY - slope * sumX) / n;
+
+    return Array.from({ length: periods }, (_, idx) => {
+      const x = n + idx + 1;
+      return Number((intercept + slope * x).toFixed(2));
+    });
+  }
+
+  function aggregateByRole(data) {
+    const bucket = new Map();
+    data.forEach((row) => {
+      const groupLabel = currentGroupKey(row);
+      const median = Number(row.median_daily_rate);
+      const p25 = Number(row.p25_daily_rate);
+      const p75 = Number(row.p75_daily_rate);
+      if (!Number.isFinite(median)) return;
+
+      const current = bucket.get(groupLabel) || {
+        count: 0,
+        medianSum: 0,
+        p25Sum: 0,
+        p75Sum: 0,
+        spreadSum: 0,
+        modeCounts: {},
+      };
+
+      current.count += 1;
+      current.medianSum += median;
+      if (Number.isFinite(p25)) current.p25Sum += p25;
+      if (Number.isFinite(p75)) current.p75Sum += p75;
+      if (Number.isFinite(p25) && p25 > 0 && Number.isFinite(p75)) {
+        current.spreadSum += ((p75 - p25) / p25) * 100;
+      }
+
+      const mode = row.market_mode || 'Unknown';
+      current.modeCounts[mode] = (current.modeCounts[mode] || 0) + 1;
+
+      bucket.set(groupLabel, current);
+    });
+
+    return Array.from(bucket.entries()).map(([groupLabel, value]) => {
+      const p50 = value.count ? value.medianSum / value.count : 0;
+      const p25 = value.count ? value.p25Sum / value.count : p50 * 0.85;
+      const p75 = value.count ? value.p75Sum / value.count : p50 * 1.15;
+      const p90 = p75 + (p75 - p50) * 0.6;
+      const spreadPct = value.count ? value.spreadSum / value.count : 0;
+      return {
+        role: groupLabel,
+        label: groupLabel,
+        count: value.count,
+        p25: Number(p25.toFixed(2)),
+        p50: Number(p50.toFixed(2)),
+        p75: Number(p75.toFixed(2)),
+        p90: Number(p90.toFixed(2)),
+        spreadPct: Number(spreadPct.toFixed(2)),
+        modeCounts: value.modeCounts,
+      };
+    }).sort((a, b) => b.count - a.count);
+  }
+
+  function aggregateByCountry(data) {
+    const bucket = new Map();
+    data.forEach((row) => {
+      const country = row.country || 'Unknown';
+      const value = Number(metricValue(row));
+      if (!Number.isFinite(value)) return;
+      const current = bucket.get(country) || { count: 0, sum: 0, values: [] };
+      current.count += 1;
+      current.sum += value;
+      current.values.push(value);
+      bucket.set(country, current);
+    });
+
+    return Array.from(bucket.entries()).map(([country, value]) => {
+      const avg = value.count ? value.sum / value.count : 0;
+      const stddev = value.values.length
+        ? Math.sqrt(value.values.reduce((acc, v) => acc + Math.pow(v - avg, 2), 0) / value.values.length)
+        : 0;
+      return {
+        country,
+        count: value.count,
+        avg: Number(avg.toFixed(2)),
+        stddev: Number(stddev.toFixed(2)),
+      };
+    }).sort((a, b) => b.avg - a.avg);
+  }
+
+  function scarcityIndex(role) {
+    const name = (role || '').toLowerCase();
+    let score = 1.0;
+    if (/(ai|ml|machine learning|data science)/.test(name)) score += 0.35;
+    if (/(salesforce|crm|mulesoft|certinia)/.test(name)) score += 0.30;
+    if (/(integration|security|cloud|platform|architect)/.test(name)) score += 0.25;
+    if (/(payroll|workforce)/.test(name)) score += 0.20;
+    return Number(score.toFixed(2));
+  }
+
+  function groupMonthlyAverage(data) {
+    const bucket = new Map();
+    data.forEach((row) => {
+      if (!row.month) return;
+      const value = metricValue(row);
+      if (value == null) return;
+      const current = bucket.get(row.month) || { sum: 0, count: 0 };
+      current.sum += Number(value);
+      current.count += 1;
+      bucket.set(row.month, current);
+    });
+
+    return Array.from(bucket.entries())
+      .map(([label, values]) => ({
+        label,
+        value: values.count > 0 ? Number((values.sum / values.count).toFixed(2)) : 0,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  function colorArray(items, selectedValue) {
+    return items.map((item) => {
+      if (!selectedValue) return colorPrimary;
+      return item.label === selectedValue ? colorAccent : colorMuted;
+    });
+  }
+
+  function toggleSelection(key, value) {
+    state.selected[key] = state.selected[key] === value ? null : value;
+    if (key === 'country') {
+      populateLocationFilter();
+    }
+    syncFilterControls();
+    renderAll();
+  }
+
+  function destroyCharts() {
+    Object.keys(chartRefs).forEach((key) => {
+      if (chartRefs[key]) {
+        chartRefs[key].destroy();
+        chartRefs[key] = null;
+      }
+    });
+  }
+
+  function renderKPIs(data) {
+    const kpiEl = document.getElementById('analytics-kpis');
+    const uniqueRoles = new Set(data.map((row) => row.role).filter(Boolean)).size;
+    const uniqueCountries = new Set(data.map((row) => row.country).filter(Boolean)).size;
+    const values = data.map((row) => metricValue(row)).filter((value) => value != null).map(Number);
+    const averageValue = values.length ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
+    const medianValue = percentile(values, 50);
+    const p40 = percentile(values, 40);
+    const p80 = percentile(values, 80);
+    const belowP50Count = values.filter((value) => medianValue != null && value < medianValue).length;
+    const belowP50Pct = values.length ? ((belowP50Count / values.length) * 100) : 0;
+
+    const lowCompetitiveCount = values.filter((value) => p40 != null && value < p40).length;
+    const premiumPressureCount = values.filter((value) => p80 != null && value > p80).length;
+
+    const spreadValues = data
+      .map((row) => {
+        const p25 = Number(row.p25_daily_rate);
+        const p75 = Number(row.p75_daily_rate);
+        if (!Number.isFinite(p25) || !Number.isFinite(p75) || p25 <= 0) return null;
+        return ((p75 - p25) / p25) * 100;
+      })
+      .filter((value) => value != null);
+    const avgSpreadPct = spreadValues.length
+      ? spreadValues.reduce((a, b) => a + Number(b), 0) / spreadValues.length
+      : 0;
+
+    const metricLabel = state.view === 'salaries' ? 'Avg Annual Salary' : 'Avg Daily Rate';
+
+    kpiEl.innerHTML = `
+      <div><strong>Filtered Records:</strong> ${data.length}</div>
+      <div><strong>${metricLabel}:</strong> ${averageValue.toFixed(2)}</div>
+      <div><strong>Avg Pay Range Spread:</strong> ${avgSpreadPct.toFixed(2)}%</div>
+      <div><strong>Renewal Risk (Low Competitiveness):</strong> ${lowCompetitiveCount}</div>
+      <div><strong>Margin Pressure (Premium Band):</strong> ${premiumPressureCount}</div>
+      <div><strong>Workforce Below P50:</strong> ${belowP50Pct.toFixed(1)}%</div>
+      <div><strong>Unique Roles:</strong> ${uniqueRoles}</div>
+      <div><strong>Countries:</strong> ${uniqueCountries}</div>
+    `;
+  }
+
+  function renderActiveFilters() {
+    const activeEl = document.getElementById('active-filters');
+    const entries = Object.entries(state.selected).filter(([, value]) => value);
+    const extras = [];
+    if (state.groupBy && state.groupBy !== 'role') {
+      extras.push(`group_by: ${state.groupBy}`);
+    }
+
+    if (!entries.length && !extras.length) {
+      activeEl.textContent = 'Active selection: none';
+      return;
+    }
+
+    const formattedEntries = entries.map(([key, value]) => `${key}: ${value}`);
+    const formatted = [...formattedEntries, ...extras].join(' | ');
+    activeEl.textContent = `Active selection: ${formatted}`;
+  }
+
+  function renderPercentileChart(data) {
+    const items = aggregateByRole(data).slice(0, 10);
+    const ctx = document.getElementById('chart-percentile');
+    chartRefs.percentile = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.role),
+        datasets: [{
+          label: 'P25',
+          data: items.map((item) => item.p25),
+          backgroundColor: colorMuted,
+        }, {
+          label: 'P50',
+          data: items.map((item) => item.p50),
+          backgroundColor: colorArray(items.map((item) => ({ label: item.role })), selectedValueForGroupBy()),
+        }, {
+          label: 'P75',
+          data: items.map((item) => item.p75),
+          backgroundColor: colorPrimarySoft,
+        }, {
+          label: 'P90 (est)',
+          data: items.map((item) => item.p90),
+          backgroundColor: colorAccent,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection(selectionKeyForGroupBy(), items[index].role);
+        },
+      },
+    });
+  }
+
+  function renderCompressionChart(data) {
+    const items = aggregateByRole(data).slice(0, 12);
+    const ctx = document.getElementById('chart-compression');
+    chartRefs.compression = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.role),
+        datasets: [{
+          label: 'Pay Range Spread %',
+          data: items.map((item) => item.spreadPct),
+          backgroundColor: colorArray(items.map((item) => ({ label: item.role })), selectedValueForGroupBy()),
+        }],
+      },
+      options: {
+        responsive: true,
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection(selectionKeyForGroupBy(), items[index].role);
+        },
+      },
+    });
+  }
+
+  function renderInflationChart(data) {
+    const items = groupMonthlyAverage(data);
+    const values = items.map((item) => item.value);
+    const yoyValues = items.map((item, index) => {
+      if (index < 12 || values[index - 12] === 0) return null;
+      return Number((((values[index] - values[index - 12]) / values[index - 12]) * 100).toFixed(2));
+    });
+
+    const ctx = document.getElementById('chart-inflation');
+    chartRefs.inflation = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: items.map((item) => item.label),
+        datasets: [{
+          label: state.view === 'salaries' ? 'Avg Annual Salary' : 'Avg Daily Rate',
+          data: items.map((item) => item.value),
+          borderColor: colorPrimary,
+          backgroundColor: colorPrimary,
+          yAxisID: 'y',
+          tension: 0.2,
+        }, {
+          label: 'YoY % Change',
+          data: yoyValues,
+          borderColor: colorAccent,
+          backgroundColor: colorAccent,
+          yAxisID: 'y1',
+          tension: 0.2,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { position: 'left' },
+          y1: { position: 'right', grid: { drawOnChartArea: false } },
+        },
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection('month', items[index].label);
+        },
+      },
+    });
+  }
+
+  function renderMarginChart(data) {
+    const items = aggregateByRole(data).slice(0, 10).map((item) => {
+      const modeWeight = Object.entries(item.modeCounts || {}).reduce((acc, [mode, count]) => {
+        const base = mode === 'Inflationary' ? 22 : mode === 'Contraction' ? 28 : 25;
+        return acc + base * count;
+      }, 0);
+      const weightedBaseMargin = item.count ? modeWeight / item.count : 25;
+      const grossMargin = Math.max(8, weightedBaseMargin - (item.spreadPct / 4));
+      return { ...item, grossMargin: Number(grossMargin.toFixed(2)) };
+    });
+
+    const ctx = document.getElementById('chart-margin');
+    chartRefs.margin = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.role),
+        datasets: [{
+          label: 'Modeled Gross Margin %',
+          data: items.map((item) => item.grossMargin),
+          backgroundColor: items.map((item) => item.grossMargin < 20 ? colorAccent : colorPrimary),
+        }],
+      },
+      options: {
+        responsive: true,
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection(selectionKeyForGroupBy(), items[index].role);
+        },
+      },
+    });
+  }
+
+  function renderRenewalRiskChart(data) {
+    const roleItems = aggregateByRole(data).slice(0, 10);
+    const marketValues = data.map((row) => Number(metricValue(row))).filter((value) => Number.isFinite(value));
+    const p40 = percentile(marketValues, 40) || 0;
+    const p80 = percentile(marketValues, 80) || 0;
+
+    const items = roleItems.map((item) => {
+      const competitivenessRisk = item.p50 < p40 ? 45 : item.p50 > p80 ? 30 : 20;
+      const marginPressure = Math.min(35, item.spreadPct / 2);
+      const scarcityRisk = scarcityIndex(item.role) * 10;
+      const score = Math.min(100, competitivenessRisk + marginPressure + scarcityRisk);
+      return { ...item, score: Number(score.toFixed(1)) };
+    });
+
+    const ctx = document.getElementById('chart-renewal');
+    chartRefs.renewal = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.role),
+        datasets: [{
+          label: 'Renewal Risk Score (0-100)',
+          data: items.map((item) => item.score),
+          backgroundColor: items.map((item) => item.score >= 70 ? colorAccent : colorPrimary),
+        }],
+      },
+      options: {
+        responsive: true,
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection(selectionKeyForGroupBy(), items[index].role);
+        },
+      },
+    });
+  }
+
+  function renderArbitrageChart(data) {
+    const countries = aggregateByCountry(data);
+    const maxAvg = countries.length ? countries[0].avg : 0;
+    const items = countries.map((country) => ({
+      ...country,
+      opportunity: maxAvg > 0 ? Number((((maxAvg - country.avg) / maxAvg) * 100).toFixed(2)) : 0,
+    }));
+
+    const ctx = document.getElementById('chart-arbitrage');
+    chartRefs.arbitrage = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.country),
+        datasets: [{
+          label: 'Arbitrage Opportunity %',
+          data: items.map((item) => item.opportunity),
+          backgroundColor: colorArray(items.map((item) => ({ label: item.country })), state.selected.country),
+        }],
+      },
+      options: {
+        responsive: true,
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection('country', items[index].country);
+        },
+      },
+    });
+  }
+
+  function renderAttritionChart(data) {
+    const values = data.map((row) => Number(metricValue(row))).filter((value) => Number.isFinite(value));
+    const p40 = percentile(values, 40) || 0;
+    const p50 = percentile(values, 50) || 0;
+    const p65 = percentile(values, 65) || 0;
+    const p80 = percentile(values, 80) || 0;
+
+    const bands = [
+      { label: '<P40', risk: 24, count: values.filter((v) => v < p40).length },
+      { label: 'P40-P50', risk: 16, count: values.filter((v) => v >= p40 && v < p50).length },
+      { label: 'P50-P65', risk: 10, count: values.filter((v) => v >= p50 && v < p65).length },
+      { label: 'P65-P80', risk: 8, count: values.filter((v) => v >= p65 && v < p80).length },
+      { label: '>P80', risk: 11, count: values.filter((v) => v >= p80).length },
+    ];
+
+    const ctx = document.getElementById('chart-attrition');
+    chartRefs.attrition = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: bands.map((band) => band.label),
+        datasets: [{
+          label: 'Estimated Attrition Risk %',
+          data: bands.map((band) => band.risk),
+          borderColor: colorAccent,
+          backgroundColor: colorAccent,
+          tension: 0.25,
+        }, {
+          label: 'Role Count',
+          data: bands.map((band) => band.count),
+          borderColor: colorPrimary,
+          backgroundColor: colorPrimary,
+          yAxisID: 'y1',
+          tension: 0.25,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { position: 'left' },
+          y1: { position: 'right', grid: { drawOnChartArea: false } },
+        },
+      },
+    });
+  }
+
+  function renderOfferDeclineChart() {
+    const gap = [-20, -15, -10, -5, 0, 5];
+    const decline = gap.map((value) => {
+      const score = 100 / (1 + Math.exp((value + 7) / 2.8));
+      return Number(score.toFixed(1));
+    });
+
+    const ctx = document.getElementById('chart-offer');
+    chartRefs.offer = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: gap.map((value) => `${value}%`),
+        datasets: [{
+          label: 'Offer Decline Probability %',
+          data: decline,
+          borderColor: colorAccent,
+          backgroundColor: colorAccent,
+          tension: 0.2,
+        }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  function renderForecastChart(data) {
+    const series = groupMonthlyAverage(data);
+    const historyLabels = series.map((item) => item.label);
+    const historyValues = series.map((item) => item.value);
+    const forecastValues = linearForecast(historyValues.slice(-12), 6);
+    const lastLabel = historyLabels.length ? historyLabels[historyLabels.length - 1] : '2026-01';
+    const forecastLabels = Array.from({ length: 6 }, (_, idx) => monthShift(lastLabel, idx + 1));
+
+    const labels = [...historyLabels, ...forecastLabels];
+    const historicalDataset = [...historyValues, ...Array(6).fill(null)];
+    const forecastDataset = [...Array(Math.max(0, historyLabels.length - 1)).fill(null), historyValues[historyValues.length - 1] || null, ...forecastValues];
+
+    const ctx = document.getElementById('chart-forecast');
+    chartRefs.forecast = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Historical',
+          data: historicalDataset,
+          borderColor: colorPrimary,
+          backgroundColor: colorPrimary,
+          tension: 0.2,
+        }, {
+          label: 'Forecast (6 months)',
+          data: forecastDataset,
+          borderColor: colorAccent,
+          backgroundColor: colorAccent,
+          tension: 0.2,
+          borderDash: [6, 4],
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+      },
+    });
+  }
+
+  function renderReplacementChart(data) {
+    const values = data.map((row) => Number(metricValue(row))).filter((value) => Number.isFinite(value));
+    const average = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    const proactive = average * 0.08;
+    const marketDelta = average * 0.08;
+    const recruitment = average * 0.12;
+    const onboarding = average * 0.06;
+    const lostProductivity = average * 0.18;
+    const replacementTotal = marketDelta + recruitment + onboarding + lostProductivity;
+
+    const ctx = document.getElementById('chart-replacement');
+    chartRefs.replacement = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Proactive Adjustment', 'Replacement Cost'],
+        datasets: [{
+          label: 'Cost',
+          data: [proactive, replacementTotal],
+          backgroundColor: [colorPrimary, colorAccent],
+        }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  function renderScenariosChart() {
+    const labels = ['Conservative', 'Market Match', 'Premium'];
+    const salaryIncrease = [3, 7, 10];
+    const marginImpact = [0, -3, -6];
+    const attritionRisk = [14, 8, 5];
+
+    const ctx = document.getElementById('chart-scenarios');
+    chartRefs.scenarios = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Salary Increase %',
+          data: salaryIncrease,
+          backgroundColor: colorPrimary,
+        }, {
+          label: 'Margin Impact %',
+          data: marginImpact,
+          backgroundColor: colorMuted,
+        }, {
+          label: 'Attrition Risk %',
+          data: attritionRisk,
+          backgroundColor: colorAccent,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+      },
+    });
+  }
+
+  function renderPayBandsChart(data) {
+    const items = aggregateByRole(data).slice(0, 10);
+    const ctx = document.getElementById('chart-paybands');
+    chartRefs.paybands = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.role),
+        datasets: [{
+          label: 'Min (P25)',
+          data: items.map((item) => item.p25),
+          backgroundColor: colorMuted,
+        }, {
+          label: 'Mid (P50)',
+          data: items.map((item) => item.p50),
+          backgroundColor: colorPrimary,
+        }, {
+          label: 'Max (P75)',
+          data: items.map((item) => item.p75),
+          backgroundColor: colorPrimarySoft,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection(selectionKeyForGroupBy(), items[index].role);
+        },
+      },
+    });
+  }
+
+  function renderSkillPremiumChart(data) {
+    const items = aggregateByRole(data).slice(0, 12).map((item) => ({
+      ...item,
+      premium: scarcityIndex(item.role),
+    })).sort((a, b) => b.premium - a.premium);
+
+    const ctx = document.getElementById('chart-skill');
+    chartRefs.skill = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.role),
+        datasets: [{
+          label: 'Skill Premium Multiplier',
+          data: items.map((item) => item.premium),
+          backgroundColor: colorAccent,
+        }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  function renderBelowP50Chart(data) {
+    const values = data.map((row) => Number(metricValue(row))).filter((value) => Number.isFinite(value));
+    const p50 = percentile(values, 50) || 0;
+    const countries = aggregateByCountry(data);
+    const items = countries.map((country) => {
+      const countryValues = data
+        .filter((row) => (row.country || 'Unknown') === country.country)
+        .map((row) => Number(metricValue(row)))
+        .filter((value) => Number.isFinite(value));
+      const below = countryValues.filter((value) => value < p50).length;
+      const pct = countryValues.length ? (below / countryValues.length) * 100 : 0;
+      return { country: country.country, pct: Number(pct.toFixed(2)) };
+    });
+
+    const ctx = document.getElementById('chart-below-p50');
+    chartRefs.belowP50 = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.country),
+        datasets: [{
+          label: 'Below P50 %',
+          data: items.map((item) => item.pct),
+          backgroundColor: colorArray(items.map((item) => ({ label: item.country })), state.selected.country),
+        }],
+      },
+      options: {
+        responsive: true,
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection('country', items[index].country);
+        },
+      },
+    });
+  }
+
+  function renderVolatilityChart(data) {
+    const items = groupStdDev(data, 'country').slice(0, 12);
+    const ctx = document.getElementById('chart-volatility');
+    chartRefs.volatility = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.label),
+        datasets: [{
+          label: 'Std Dev of Rates',
+          data: items.map((item) => item.value),
+          backgroundColor: colorArray(items, state.selected.country),
+        }],
+      },
+      options: {
+        responsive: true,
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection('country', items[index].label);
+        },
+      },
+    });
+  }
+
+  function renderModeChart(data) {
+    const items = groupCount(data, 'market_mode');
+    const ctx = document.getElementById('chart-mode');
+    chartRefs.mode = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: items.map((item) => item.label),
+        datasets: [{
+          label: 'Count',
+          data: items.map((item) => item.value),
+          backgroundColor: colorArray(items, state.selected.market_mode),
+        }],
+      },
+      options: {
+        responsive: true,
+        onClick: (_, elements) => {
+          if (!elements.length) return;
+          const index = elements[0].index;
+          toggleSelection('market_mode', items[index].label);
+        },
+      },
+    });
+  }
+
+  function renderSalaryRiskChart(data) {
+    const values = data.map((row) => Number(metricValue(row))).filter((value) => Number.isFinite(value));
+    const p50 = percentile(values, 50) || 0;
+    const items = aggregateByRole(data).slice(0, 12).map((item) => {
+      const competitivenessGap = p50 > 0 ? ((p50 - item.p50) / p50) * 100 : 0;
+      const marginPressure = Math.min(100, item.spreadPct * 2);
+      const scarcity = scarcityIndex(item.role) * 10;
+      const riskScore = Math.min(100, Math.max(0, competitivenessGap + marginPressure + scarcity));
+      return {
+        role: item.role,
+        x: Number(competitivenessGap.toFixed(2)),
+        y: Number(marginPressure.toFixed(2)),
+        r: Number((4 + scarcity / 6).toFixed(2)),
+        score: Number(riskScore.toFixed(2)),
+      };
+    });
+
+    const ctx = document.getElementById('chart-salary-risk');
+    chartRefs.salaryRisk = new Chart(ctx, {
+      type: 'bubble',
+      data: {
+        datasets: [{
+          label: 'Role Risk Bubbles',
+          data: items,
+          backgroundColor: colorAccentSoft,
+          borderColor: colorAccent,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const point = ctx.raw;
+                return `${point.role}: score ${point.score}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: { title: { display: true, text: 'Competitiveness Gap % (vs P50)' } },
+          y: { title: { display: true, text: 'Margin Pressure Proxy' } },
+        },
+      },
+    });
+  }
+
+  function renderValueIndexChart(data) {
+    const items = aggregateByRole(data).slice(0, 12).map((item) => {
+      const scarcity = scarcityIndex(item.role);
+      const replacementDifficulty = Math.min(2.0, 1 + item.spreadPct / 100);
+      const marketCompetitiveness = Math.min(2.0, 1 + (item.p50 / Math.max(1, percentile(data.map((row) => Number(row.median_daily_rate)).filter((value) => Number.isFinite(value)), 50) || 1)) * 0.4);
+      const valueIndex = scarcity * replacementDifficulty * marketCompetitiveness;
+      return {
+        role: item.role,
+        index: Number(valueIndex.toFixed(2)),
+      };
+    }).sort((a, b) => b.index - a.index);
+
+    const ctx = document.getElementById('chart-value');
+    chartRefs.value = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: items.map((item) => item.role),
+        datasets: [{
+          label: 'Workforce Value Index',
+          data: items.map((item) => item.index),
+          backgroundColor: colorPrimary,
+        }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  function renderAll() {
+    const data = filteredRows();
+    destroyCharts();
+    renderActiveFilters();
+    renderKPIs(data);
+    renderPercentileChart(data);
+    renderCompressionChart(data);
+    renderInflationChart(data);
+    renderMarginChart(data);
+    renderRenewalRiskChart(data);
+    renderArbitrageChart(data);
+    renderAttritionChart(data);
+    renderOfferDeclineChart();
+    renderForecastChart(data);
+    renderReplacementChart(data);
+    renderScenariosChart();
+    renderPayBandsChart(data);
+    renderSkillPremiumChart(data);
+    renderBelowP50Chart(data);
+    renderVolatilityChart(data);
+    renderModeChart(data);
+    renderSalaryRiskChart(data);
+    renderValueIndexChart(data);
+  }
+
+  document.getElementById('value-view-select').addEventListener('change', (event) => {
+    state.view = event.target.value;
+    renderAll();
+  });
+
+  document.getElementById('category-select').addEventListener('change', (event) => {
+    setActiveTab(event.target.value || 'strategic');
+  });
+
+  document.getElementById('group-by-select').addEventListener('change', (event) => {
+    state.groupBy = event.target.value;
+    syncFilterControls();
+    renderAll();
+  });
+
+  document.getElementById('location-filter').addEventListener('change', (event) => {
+    state.selected.city = event.target.value || null;
+    syncFilterControls();
+    renderAll();
+  });
+
+  document.getElementById('role-family-filter').addEventListener('change', (event) => {
+    state.selected.role_family = event.target.value || null;
+    state.selected.role_function = null;
+    state.selected.role = null;
+    populateRoleFilters();
+    syncFilterControls();
+    renderAll();
+  });
+
+  document.getElementById('role-function-filter').addEventListener('change', (event) => {
+    state.selected.role_function = event.target.value || null;
+    state.selected.role = null;
+    populateRoleFilters();
+    syncFilterControls();
+    renderAll();
+  });
+
+  document.getElementById('role-filter').addEventListener('change', (event) => {
+    state.selected.role = event.target.value || null;
+    syncFilterControls();
+    renderAll();
+  });
+
+  document.getElementById('clear-filters-btn').addEventListener('click', () => {
+    state.groupBy = 'role';
+    state.selected = {
+      country: null,
+      city: null,
+      level: null,
+      role_family: null,
+      role_function: null,
+      role: null,
+      market_mode: null,
+      month: null,
+    };
+    populateLocationFilter();
+    populateRoleFilters();
+    syncFilterControls();
+    renderAll();
+  });
+
+  document.getElementById('grid-columns-select').addEventListener('change', (event) => {
+    const raw = Number(event.target.value);
+    const columns = Number.isFinite(raw) ? Math.min(4, Math.max(1, raw)) : 3;
+    document.querySelectorAll('.charts-grid').forEach((grid) => {
+      grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+    });
+  });
+
+  populateLocationFilter();
+  populateRoleFilters();
+  syncFilterControls();
+  renderAll();
+  setActiveTab(state.activeTab);
+</script>
+{% else %}
+<p class="small">No benchmark records available for analytics.</p>
+{% endif %}
+{% endblock %}

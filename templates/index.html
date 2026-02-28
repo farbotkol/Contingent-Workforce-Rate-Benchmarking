@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CXC Global Workforce Benchmarking</title>
+    <style>
+      :root {
+        --brand-primary: #003366;
+        --brand-accent: #00a3e0;
+        --brand-bg: #f5f8fb;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --card: #ffffff;
+        --border: #dbe5ef;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        color: var(--text);
+        background: var(--brand-bg);
+      }
+      header {
+        background: var(--brand-primary);
+        color: #fff;
+        padding: 1rem 1.5rem;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+      header p {
+        margin: 0.3rem 0 0;
+        font-size: 0.9rem;
+        color: #d7ebfa;
+      }
+      main {
+        max-width: 1100px;
+        margin: 1.2rem auto;
+        padding: 0 1rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1rem;
+        color: var(--brand-primary);
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+        color: var(--muted);
+      }
+      input, select, textarea, button {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 0.75rem;
+        padding: 0.5rem;
+        border: 1px solid #cfd9e5;
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
+      button {
+        background: var(--brand-accent);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .active {
+        border-color: var(--brand-accent);
+        box-shadow: 0 0 0 2px rgba(0, 163, 224, 0.12);
+      }
+      .error {
+        color: #b91c1c;
+        font-size: 0.85rem;
+      }
+      .result {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.9rem;
+      }
+      .small {
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+      }
+      th, td {
+        border-bottom: 1px solid var(--border);
+        padding: 0.4rem;
+        text-align: left;
+      }
+      th {
+        color: var(--brand-primary);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>CXC Global Contractor Rate Benchmarking</h1>
+      <p>Single-page interface for benchmark, normalize, convert, and history workflows.</p>
+    </header>
+
+    <main>
+      <div class="grid">
+        <section class="card {% if active_action == 'benchmark' %}active{% endif %}">
+          <h2>Benchmark</h2>
+          <form method="post">
+            <input type="hidden" name="action" value="benchmark">
+            <label>Role</label>
+            <input type="text" name="benchmark_role" value="{{ benchmark_form.role }}" required>
+
+            <label>Level (optional override)</label>
+            <select name="benchmark_level">
+              {% for level in levels %}
+                <option value="{{ level }}" {% if benchmark_form.level == level %}selected{% endif %}>{{ level if level else 'Auto-detect' }}</option>
+              {% endfor %}
+            </select>
+
+            <label>Country</label>
+            <select name="benchmark_country" required>
+              {% for country in countries %}
+                <option value="{{ country }}" {% if benchmark_form.country == country %}selected{% endif %}>{{ country }}</option>
+              {% endfor %}
+            </select>
+
+            <label>Daily rates (comma or newline separated)</label>
+            <textarea name="benchmark_rates" rows="3" placeholder="800, 850, 900">{{ benchmark_form.rates }}</textarea>
+
+            <label>Annual salaries (comma or newline separated)</label>
+            <textarea name="benchmark_salaries" rows="3" placeholder="120000, 130000">{{ benchmark_form.salaries }}</textarea>
+
+            <button type="submit">Run Benchmark</button>
+          </form>
+
+          {% if errors.benchmark %}
+            <p class="error">{{ errors.benchmark }}</p>
+          {% endif %}
+
+          {% if results.benchmark %}
+            <div class="result">
+              <div><strong>Role:</strong> {{ results.benchmark.role }} ({{ results.benchmark.level }})</div>
+              <div><strong>P25 / Median / P75:</strong> {{ results.benchmark.p25 }} / {{ results.benchmark.median }} / {{ results.benchmark.p75 }} {{ results.benchmark.currency }}</div>
+              <div><strong>Market Mode:</strong> {{ results.benchmark.market_mode }} | <strong>Confidence:</strong> {{ results.benchmark.confidence }}</div>
+              <div><strong>Data Points:</strong> {{ results.benchmark.data_points }} | <strong>Record ID:</strong> {{ results.benchmark.benchmark_id }}</div>
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="card {% if active_action == 'bulk' %}active{% endif %}">
+          <h2>Bulk Benchmark</h2>
+          <form method="post">
+            <input type="hidden" name="action" value="bulk">
+
+            <label>Country (applies to all rows)</label>
+            <select name="bulk_country" required>
+              {% for country in countries %}
+                <option value="{{ country }}" {% if bulk_form.country == country %}selected{% endif %}>{{ country }}</option>
+              {% endfor %}
+            </select>
+
+            <label>Rows (one per line: role|level|rates|salaries)</label>
+            <textarea name="bulk_rows" rows="6" placeholder="Senior Software Engineer|Senior|800;850;900|120000;130000&#10;Data Engineer|Mid|700;760|110000">{{ bulk_form.rows }}</textarea>
+            <div class="small">Use <strong>|</strong> between columns. Leave level/rates/salaries blank if not needed.</div>
+
+            <button type="submit">Run Bulk Benchmark</button>
+          </form>
+
+          {% if errors.bulk %}
+            <p class="error">{{ errors.bulk }}</p>
+          {% endif %}
+
+          {% if results.bulk %}
+            <div class="result">
+              <div><strong>Country:</strong> {{ results.bulk.country }}</div>
+              <div><strong>Success:</strong> {{ results.bulk.success_count }} | <strong>Errors:</strong> {{ results.bulk.error_count }}</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Line</th>
+                    <th>Status</th>
+                    <th>Role</th>
+                    <th>Median</th>
+                    <th>Range</th>
+                    <th>Mode</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in results.bulk.rows %}
+                    <tr>
+                      <td>{{ row.line }}</td>
+                      <td>{{ row.status }}</td>
+                      <td>{{ row.role if row.status == 'ok' else '-' }}</td>
+                      <td>{% if row.status == 'ok' %}{{ row.median }} {{ row.currency }}{% else %}-{% endif %}</td>
+                      <td>{% if row.status == 'ok' %}{{ row.p25 }} - {{ row.p75 }}{% else %}-{% endif %}</td>
+                      <td>{{ row.market_mode if row.status == 'ok' else '-' }}</td>
+                      <td>{% if row.status == 'ok' %}ID {{ row.benchmark_id }} ({{ row.data_points }} pts){% else %}{{ row.message }}{% endif %}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="card {% if active_action in ['upload_normalize', 'upload_benchmark_accepted'] %}active{% endif %}">
+          <h2>Upload → Normalize → Benchmark</h2>
+          <form method="post" enctype="multipart/form-data">
+            <label>Default Country (used when CSV row has no country)</label>
+            <select name="upload_country" required>
+              {% for country in countries %}
+                <option value="{{ country }}" {% if upload_form.country == country %}selected{% endif %}>{{ country }}</option>
+              {% endfor %}
+            </select>
+
+            <label>Default daily rates (used for accepted rows, comma/newline/semicolon separated)</label>
+            <textarea name="default_rates" rows="2" placeholder="800;850;900">{{ upload_form.default_rates }}</textarea>
+
+            <label>Default annual salaries (used for accepted rows, comma/newline/semicolon separated)</label>
+            <textarea name="default_salaries" rows="2" placeholder="120000;130000">{{ upload_form.default_salaries }}</textarea>
+
+            <label><input type="checkbox" name="use_internet_benchmarks" {% if upload_form.use_internet %}checked{% endif %}> Use internet benchmark search (recommended)</label>
+            <label><input type="checkbox" name="use_ai_estimate" {% if upload_form.use_ai_estimate %}checked{% endif %}> Use AI estimated rates fallback</label>
+
+            <label>CSV File</label>
+            <input type="file" name="normalize_file" accept=".csv">
+            <div class="small">Required columns only: <strong>title</strong>, <strong>description</strong>. Description helps role normalization.</div>
+
+            <button type="submit" name="action" value="upload_normalize">Upload and Normalize</button>
+            <button type="submit" name="action" value="upload_normalize_sample">Load Sample File</button>
+          </form>
+
+          {% if errors.upload_normalize %}
+            <p class="error">{{ errors.upload_normalize }}</p>
+          {% endif %}
+
+          {% if results.upload_normalize %}
+            <div class="result">
+              <div><strong>Normalized Rows:</strong> {{ results.upload_normalize.count }}</div>
+              <form method="post">
+                <input type="hidden" name="action" value="upload_benchmark_accepted">
+                <input type="hidden" name="normalized_payload_b64" value="{{ results.upload_normalize.payload_b64 }}">
+
+                <label>Benchmark Country Fallback</label>
+                <select name="accepted_country" required>
+                  {% for country in countries %}
+                    <option value="{{ country }}" {% if results.upload_normalize.country == country %}selected{% endif %}>{{ country }}</option>
+                  {% endfor %}
+                </select>
+
+                <label>Default daily rates for accepted rows</label>
+                <textarea name="accepted_default_rates" rows="2" placeholder="800;850;900">{{ results.upload_normalize.default_rates }}</textarea>
+
+                <label>Default annual salaries for accepted rows</label>
+                <textarea name="accepted_default_salaries" rows="2" placeholder="120000;130000">{{ results.upload_normalize.default_salaries }}</textarea>
+
+                <label><input type="checkbox" name="accepted_use_internet" {% if results.upload_normalize.use_internet %}checked{% endif %}> Use internet benchmark search</label>
+                <label><input type="checkbox" name="accepted_use_ai_estimate" {% if results.upload_normalize.use_ai_estimate %}checked{% endif %}> Use AI estimated rates fallback</label>
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Accept</th>
+                      <th>Line</th>
+                      <th>Title</th>
+                      <th>Description</th>
+                      <th>Role</th>
+                      <th>Level</th>
+                      <th>Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in results.upload_normalize.rows %}
+                      <tr>
+                        <td><input type="checkbox" name="accepted_lines" value="{{ row.line }}" checked></td>
+                        <td>{{ row.line }}</td>
+                        <td>{{ row.title }}</td>
+                        <td>{{ row.description }}</td>
+                        <td>{{ row.canonical_role }}</td>
+                        <td>{{ row.seniority_level }}</td>
+                        <td>{{ row.confidence }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+
+                <button type="submit">Benchmark Accepted Rows</button>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if errors.upload_benchmark %}
+            <p class="error">{{ errors.upload_benchmark }}</p>
+          {% endif %}
+
+          {% if results.upload_benchmark %}
+            <div class="result">
+              <div><strong>Success:</strong> {{ results.upload_benchmark.success_count }} | <strong>Errors:</strong> {{ results.upload_benchmark.error_count }}</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Line</th>
+                    <th>Status</th>
+                    <th>Role</th>
+                    <th>Country</th>
+                    <th>Median</th>
+                    <th>Range</th>
+                    <th>Mode</th>
+                    <th>Internet Points</th>
+                    <th>AI Points</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in results.upload_benchmark.rows %}
+                    <tr>
+                      <td>{{ row.line }}</td>
+                      <td>{{ row.status }}</td>
+                      <td>{{ row.role if row.role else '-' }}</td>
+                      <td>{{ row.country if row.country else '-' }}</td>
+                      <td>{% if row.status == 'ok' %}{{ row.median }} {{ row.currency }}{% else %}-{% endif %}</td>
+                      <td>{% if row.status == 'ok' %}{{ row.p25 }} - {{ row.p75 }}{% else %}-{% endif %}</td>
+                      <td>{{ row.market_mode if row.status == 'ok' else '-' }}</td>
+                      <td>{% if row.status == 'ok' %}{{ row.internet_points }}{% else %}-{% endif %}</td>
+                      <td>{% if row.status == 'ok' %}{{ row.ai_points }}{% else %}-{% endif %}</td>
+                      <td>{% if row.status == 'ok' %}ID {{ row.benchmark_id }} ({{ row.data_points }} pts){% else %}{{ row.message }}{% endif %}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="card {% if active_action == 'normalize' %}active{% endif %}">
+          <h2>Normalize</h2>
+          <form method="post">
+            <input type="hidden" name="action" value="normalize">
+            <label>Job Title</label>
+            <input type="text" name="normalize_title" value="{{ normalize_form.title }}" placeholder="Senior Full Stack Developer" required>
+            <button type="submit">Normalize Title</button>
+          </form>
+
+          {% if errors.normalize %}
+            <p class="error">{{ errors.normalize }}</p>
+          {% endif %}
+
+          {% if results.normalize %}
+            <div class="result">
+              <div><strong>Canonical Role:</strong> {{ results.normalize.canonical_role }}</div>
+              <div><strong>Seniority:</strong> {{ results.normalize.seniority_level }}</div>
+              <div><strong>Confidence:</strong> {{ results.normalize.confidence }}</div>
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="card {% if active_action == 'convert' %}active{% endif %}">
+          <h2>Convert Salary</h2>
+          <form method="post">
+            <input type="hidden" name="action" value="convert">
+            <label>Annual Salary</label>
+            <input type="number" step="0.01" name="convert_salary" value="{{ convert_form.salary }}" required>
+
+            <label>Country</label>
+            <select name="convert_country" required>
+              {% for country in countries %}
+                <option value="{{ country }}" {% if convert_form.country == country %}selected{% endif %}>{{ country }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit">Convert</button>
+          </form>
+
+          {% if errors.convert %}
+            <p class="error">{{ errors.convert }}</p>
+          {% endif %}
+
+          {% if results.convert %}
+            <div class="result">
+              <div><strong>Daily Rate:</strong> {{ results.convert.daily_rate }} {{ results.convert.currency }}</div>
+              <div><strong>Multiplier:</strong> {{ results.convert.multiplier_used }} | <strong>Working Days:</strong> {{ results.convert.working_days }}</div>
+              <div class="small">Rate Type: {{ results.convert.rate_type }}</div>
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="card {% if active_action == 'history' %}active{% endif %}">
+          <h2>History</h2>
+          <form method="post">
+            <input type="hidden" name="action" value="history">
+            <label>Role</label>
+            <input type="text" name="history_role" value="{{ history_form.role }}" required>
+
+            <label>Level</label>
+            <select name="history_level" required>
+              {% for level in ['Junior', 'Mid', 'Senior', 'Lead', 'Architect'] %}
+                <option value="{{ level }}" {% if history_form.level == level %}selected{% endif %}>{{ level }}</option>
+              {% endfor %}
+            </select>
+
+            <label>Country</label>
+            <select name="history_country" required>
+              {% for country in countries %}
+                <option value="{{ country }}" {% if history_form.country == country %}selected{% endif %}>{{ country }}</option>
+              {% endfor %}
+            </select>
+
+            <label>Limit</label>
+            <input type="number" min="1" max="50" name="history_limit" value="{{ history_form.limit }}" required>
+            <button type="submit">Load History</button>
+          </form>
+
+          {% if errors.history %}
+            <p class="error">{{ errors.history }}</p>
+          {% endif %}
+
+          {% if results.history %}
+            <div class="result">
+              <div><strong>Mapped Role:</strong> {{ results.history.normalized_role }}</div>
+              {% if results.history.records %}
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Median</th>
+                      <th>Range</th>
+                      <th>Mode</th>
+                      <th>Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in results.history.records %}
+                      <tr>
+                        <td>{{ row.timestamp[:10] }}</td>
+                        <td>{{ row.median_daily_rate }} {{ row.currency }}</td>
+                        <td>{{ row.p25_daily_rate }} - {{ row.p75_daily_rate }}</td>
+                        <td>{{ row.market_mode }}</td>
+                        <td>{{ row.data_points }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% else %}
+                <p class="small">No history found for this role/country/level.</p>
+              {% endif %}
+            </div>
+          {% endif %}
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

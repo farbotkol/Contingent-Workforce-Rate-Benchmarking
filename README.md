@@ -36,6 +36,23 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+### Dev Container / Ubuntu (PEP 668-safe setup)
+
+If your environment blocks system-level `pip install` (externally managed Python), use a local `.venv`:
+
+```bash
+# From the project root
+/usr/bin/python3 -m venv .venv --without-pip
+/usr/bin/python3 -m pip --python .venv/bin/python install --upgrade pip
+/usr/bin/python3 -m pip --python .venv/bin/python install -r requirements.txt
+
+# Run the CLI
+.venv/bin/python main.py --help
+
+# Optional: run tests
+.venv/bin/pytest -q
+```
+
 ### Docker Installation
 
 ```bash
@@ -82,6 +99,17 @@ python main.py history \
   --limit 10
 ```
 
+### Web UI
+
+Run a browser-based UI that supports all core workflows (`benchmark`, `normalize`, `convert`, `history`):
+
+```bash
+# If using the local venv
+.venv/bin/python webapp.py
+```
+
+Then open: `http://localhost:8000`
+
 ### Docker Usage
 
 ```bash
@@ -97,6 +125,42 @@ docker run rate-benchmark normalize "Lead Data Scientist"
 
 # Convert salary
 docker run rate-benchmark convert --salary 100000 --country Singapore
+```
+
+## Azure Deployment (Web UI)
+
+Deploy the Flask web app (`webapp.py`) to Azure App Service using a container image.
+
+### Prerequisites
+
+- Azure CLI installed (`az`)
+- Logged in: `az login`
+- A subscription ID with permission to create resources
+
+### One-command deployment
+
+Use the included script (creates resource group, ACR, App Service plan, and Web App):
+
+```bash
+./scripts/deploy_azure_webapp.sh <subscription_id> <resource_group> <location> <app_name>
+```
+
+Example:
+
+```bash
+./scripts/deploy_azure_webapp.sh 00000000-0000-0000-0000-000000000000 rg-ratebench eastus ratebench-prod
+```
+
+### What gets deployed
+
+- Container image built from `Dockerfile.web`
+- Flask app served with Gunicorn (`webapp:app`)
+- Web App configured with `WEBSITES_PORT=8000`
+
+After deployment, open:
+
+```text
+https://<app_name>.azurewebsites.net
 ```
 
 ## Project Structure

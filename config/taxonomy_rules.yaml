@@ -1,0 +1,89 @@
+default:
+  family: Information & Communication Technology
+  function: Other
+rules:
+  - name: Data & AI
+    family: Information & Communication Technology
+    function: Data & AI
+    keywords:
+      - data
+      - ai
+      - ml
+      - analytics
+      - bi
+      - scientist
+  - name: DevOps & Infrastructure
+    family: Information & Communication Technology
+    function: DevOps & Infrastructure
+    keywords:
+      - devops
+      - platform
+      - cloud
+      - infrastructure
+      - sre
+  - name: Security
+    family: Information & Communication Technology
+    function: Security
+    keywords:
+      - security
+      - cyber
+      - infosec
+      - iam
+  - name: Architecture & Leadership
+    family: Information & Communication Technology
+    function: Architecture & Leadership
+    keywords:
+      - architect
+      - principal engineer
+      - engineering manager
+      - head of engineering
+  - name: Software Engineering
+    family: Information & Communication Technology
+    function: Software Engineering
+    keywords:
+      - developer
+      - engineer
+      - programmer
+      - full stack
+      - backend
+      - frontend
+      - software
+  - name: Enterprise Applications
+    family: Information & Communication Technology
+    function: Enterprise Applications
+    keywords:
+      - salesforce
+      - crm
+      - mulesoft
+      - certinia
+  - name: Payroll & Workforce Operations
+    family: Human Resources & Recruitment
+    function: Payroll & Workforce Operations
+    keywords:
+      - payroll
+      - workforce
+      - hris
+      - hcm
+  - name: Project Management
+    family: Information & Communication Technology
+    function: Project Management
+    keywords:
+      - project
+      - program
+      - scrum
+      - delivery
+  - name: Help Desk & IT Support
+    family: Information & Communication Technology
+    function: Help Desk & IT Support
+    keywords:
+      - support
+      - service desk
+      - helpdesk
+      - desktop
+  - name: Testing & QA
+    family: Information & Communication Technology
+    function: Testing & QA
+    keywords:
+      - qa
+      - test
+      - automation tester
