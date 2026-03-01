@@ -8,6 +8,8 @@ import os
 import re
 import hashlib
 import yaml
+import subprocess
+import sys
 from urllib.parse import urlparse, parse_qs, unquote
 from typing import List, Optional, Dict, Any
 
@@ -264,7 +266,13 @@ def inject_branding() -> Dict[str, Any]:
     db: Optional[BenchmarkDatabase] = None
     try:
         db = BenchmarkDatabase()
-        branding_key = db.get_setting("branding", "oncore")
+        branding_key_env = os.getenv("BRANDING_KEY")
+        if branding_key_env:
+            branding_key = branding_key_env.strip().lower()
+            if branding_key:
+                db.set_setting("branding", branding_key)
+        else:
+            branding_key = db.get_setting("branding", "oncore")
         branding = get_branding_config(branding_key)
     except Exception:
         branding = get_branding_config("oncore")
@@ -1239,6 +1247,62 @@ def download_sample(sample_key: str):
         abort(404)
 
     return send_from_directory(base_dir, filename, as_attachment=True)
+
+
+@app.route("/admin/synthetic-backfill", methods=["POST"])
+def synthetic_backfill_admin():
+    admin_token = os.getenv("ADMIN_TOKEN")
+    provided_token = (
+        request.headers.get("X-Admin-Token")
+        or request.args.get("token")
+        or request.form.get("token")
+    )
+
+    if not admin_token or not provided_token or provided_token != admin_token:
+        abort(403)
+
+    try:
+        months = int(request.args.get("months") or request.form.get("months") or 24)
+    except (TypeError, ValueError):
+        months = 24
+
+    months = max(1, min(months, 120))
+    db_path = os.getenv("DATABASE_PATH", os.path.join(BASE_DIR, "benchmark_data.db"))
+    script_path = os.path.join(BASE_DIR, "scripts", "generate_synthetic_history.py")
+
+    if not os.path.exists(script_path):
+        return {"status": "error", "message": "Synthetic generator script not found."}, 500
+
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                script_path,
+                "--months",
+                str(months),
+                "--db-path",
+                db_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": "Synthetic backfill timed out."}, 504
+
+    stdout = (result.stdout or "").strip()
+    stderr = (result.stderr or "").strip()
+
+    payload = {
+        "status": "ok" if result.returncode == 0 else "error",
+        "returncode": result.returncode,
+        "months": months,
+        "db_path": db_path,
+        "stdout": stdout[-4000:] if stdout else "",
+        "stderr": stderr[-4000:] if stderr else "",
+    }
+    return payload, (200 if result.returncode == 0 else 500)
 
 
 @app.route("/benchmark", methods=["GET", "POST"])
