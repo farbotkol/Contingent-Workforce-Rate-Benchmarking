@@ -26,10 +26,14 @@ class BenchmarkDatabase:
             db_path: Path to SQLite database file. If None, uses default location.
         """
         if db_path is None:
-            db_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                'benchmark_data.db'
-            )
+            env_path = os.getenv("DATABASE_PATH")
+            if env_path:
+                db_path = env_path
+            else:
+                db_path = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    'benchmark_data.db'
+                )
         
         self.db_path = db_path
         self.conn = None
