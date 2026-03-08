@@ -41,15 +41,15 @@
     <label><input type="checkbox" name="accepted_use_internet" {% if normalize_result.use_internet %}checked{% endif %}> Use internet benchmark search</label>
     <label><input type="checkbox" name="accepted_use_ai_estimate" {% if normalize_result.use_ai_estimate %}checked{% endif %}> Use AI estimated rates fallback</label>
     <table>
-      <thead><tr><th>Accept</th><th>Line</th><th>Title</th><th>Description</th><th>Role</th><th>Level</th><th>Confidence</th></tr></thead>
+      <thead><tr><th>Accept</th><th>Line</th><th>Client Role</th><th>Description</th><th>Framework Role</th><th>Level</th><th>Confidence</th></tr></thead>
       <tbody>
         {% for row in normalize_result.rows %}
         <tr>
           <td><input type="checkbox" name="accepted_lines" value="{{ row.line }}" checked></td>
           <td>{{ row.line }}</td>
-          <td>{{ row.title }}</td>
+          <td>{{ row.client_role_title if row.client_role_title else row.title }}</td>
           <td>{{ row.description }}</td>
-          <td>{{ row.canonical_role }}</td>
+          <td>{{ row.framework_role if row.framework_role else row.canonical_role }}</td>
           <td>{{ row.seniority_level }}</td>
           <td>{{ row.confidence }}</td>
         </tr>
@@ -65,13 +65,14 @@
 <div class="result">
   <div><strong>Success:</strong> {{ benchmark_result.success_count }} | <strong>Errors:</strong> {{ benchmark_result.error_count }}</div>
   <table>
-    <thead><tr><th>Line</th><th>Status</th><th>Role</th><th>Country</th><th>Median</th><th>Range</th><th>Mode</th><th>Internet Points</th><th>AI Points</th><th>Details</th></tr></thead>
+    <thead><tr><th>Line</th><th>Status</th><th>Client Role</th><th>Framework Role</th><th>Country</th><th>Median</th><th>Range</th><th>Mode</th><th>Internet Points</th><th>AI Points</th><th>Details</th></tr></thead>
     <tbody>
       {% for row in benchmark_result.rows %}
       <tr>
         <td>{{ row.line }}</td>
         <td>{{ row.status }}</td>
-        <td>{{ row.role if row.role else '-' }}</td>
+        <td>{{ row.client_role_title if row.client_role_title else '-' }}</td>
+        <td>{{ row.framework_role if row.framework_role else row.role if row.role else '-' }}</td>
         <td>{{ row.country if row.country else '-' }}</td>
         <td>{% if row.status == 'ok' %}{{ row.median }} {{ row.currency }}{% else %}-{% endif %}</td>
         <td>{% if row.status == 'ok' %}{{ row.p25 }} - {{ row.p75 }}{% else %}-{% endif %}</td>

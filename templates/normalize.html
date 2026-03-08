@@ -1,17 +1,194 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Normalize</h2>
+{% if allow_manual_taxonomy_override %}
+<p class="small"><strong>Admin mode enabled:</strong> Manual taxonomy values outside KornFerry are allowed.</p>
+{% endif %}
 <form method="post">
-  <label>Job Title</label>
+  <input type="hidden" name="action" value="normalize_run">
+  <label>Client Role Title</label>
   <input type="text" name="normalize_title" value="{{ normalize_form.title }}" placeholder="Senior Full Stack Developer" required>
   <button type="submit">Normalize Title</button>
 </form>
+
+<div class="result">
+  <h3>Normalize Multiple Roles (Excel Upload)</h3>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="normalize_bulk_upload">
+    <label>Excel File (.xlsx/.xls)</label>
+    <input type="file" name="normalize_roles_file" accept=".xlsx,.xls" required>
+    <div class="small">Column A: Client role title</div>
+    <div class="small">Column B: Role description or key deliverables</div>
+    <button type="submit">Normalize Uploaded Roles</button>
+  </form>
+  {% if bulk_error %}
+  <p class="error">{{ bulk_error }}</p>
+  {% endif %}
+</div>
+
+{% if bulk_result %}
+<div class="result">
+  <div><strong>File:</strong> {{ bulk_result.filename or 'Uploaded file' }}</div>
+  <div><strong>Normalized Rows:</strong> {{ bulk_result.count }}</div>
+  <form method="post">
+    <input type="hidden" name="action" value="normalize_bulk_export">
+    <input type="hidden" name="normalize_bulk_payload_b64" value="{{ bulk_result.payload_b64 }}">
+    <button type="submit">Export Normalized Results (CSV)</button>
+  </form>
+  <table>
+    <thead>
+      <tr>
+        <th>Line</th>
+        <th>Client Role</th>
+        <th>Description / Deliverables</th>
+        <th>Framework Role</th>
+        <th>Seniority</th>
+        <th>Confidence</th>
+        <th>Job Family</th>
+        <th>Job Function</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in bulk_result.rows %}
+      <tr>
+        <td>{{ row.line }}</td>
+        <td>{{ row.client_role_title }}</td>
+        <td>{{ row.description if row.description else '-' }}</td>
+        <td>{{ row.framework_role }}</td>
+        <td>{{ row.seniority_level }}</td>
+        <td>{{ row.confidence }}</td>
+        <td>{{ row.job_family if row.job_family else 'Not mapped' }}</td>
+        <td>{{ row.job_function if row.job_function else 'Not mapped' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if success %}<p class="small"><strong>{{ success }}</strong></p>{% endif %}
 {% if result %}
 <div class="result">
   <div><strong>Canonical Role:</strong> {{ result.canonical_role }}</div>
   <div><strong>Seniority:</strong> {{ result.seniority_level }}</div>
   <div><strong>Confidence:</strong> {{ result.confidence }}</div>
+  <div><strong>Job Family:</strong> {{ result.job_family or 'Not mapped yet' }}</div>
+  <div><strong>Job Function:</strong> {{ result.job_function or 'Not mapped yet' }}</div>
+  <div><strong>Taxonomy Source:</strong> {{ result.taxonomy_source or 'Not mapped yet' }}</div>
+</div>
+
+{% if result.requires_taxonomy_setup %}
+<div class="result">
+  <h3>Map This Role</h3>
+  <p class="small">
+    No existing framework mapping was found for this client title. The title will be normalized first, then mapped to a framework role.
+    Suggestions below are based on CXC Taxonomy only.
+  </p>
+
+  {% if result.kornferry_suggestions %}
+  <table>
+    <thead>
+      <tr>
+        <th>Suggested CXC Taxonomy Role</th>
+        <th>Job Family</th>
+        <th>Job Function</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in result.kornferry_suggestions %}
+      <tr>
+        <td>{{ row.job_role }}</td>
+        <td>{{ row.job_family }}</td>
+        <td>{{ row.job_function }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="small">No close CXC Taxonomy suggestion found. Please choose or create the correct family/function below.</p>
+  {% endif %}
+
+  <form method="post" id="normalize-map-form">
+    <input type="hidden" name="action" value="normalize_add_role_entry">
+    <input type="hidden" name="normalize_title" value="{{ normalize_form.title }}">
+    <input type="hidden" name="create_canonical_role" value="{{ create_form.canonical_role }}">
+    <input type="hidden" name="create_input_title" value="{{ create_form.input_title or normalize_form.title }}">
+
+    <label>Client Role Title</label>
+    <input type="text" value="{{ create_form.input_title or normalize_form.title }}" readonly>
+
+    <label>Framework Role</label>
+    <input type="text" name="create_framework_role" value="{{ create_form.framework_role or result.canonical_role }}" placeholder="Select or enter framework role" required>
+
+    <label>Job Family (CXC Taxonomy)</label>
+    <select name="create_job_family" id="create_job_family" data-selected="{{ create_form.job_family }}">
+      <option value="">Select job family</option>
+      {% for family in kornferry_families %}
+      <option value="{{ family }}" {% if create_form.job_family == family %}selected{% endif %}>{{ family }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Job Function (CXC Taxonomy)</label>
+    <select name="create_job_function" id="create_job_function" data-selected="{{ create_form.job_function }}">
+      <option value="">Select job function</option>
+    </select>
+
+    {% if allow_manual_taxonomy_override %}
+    <label>Or New Job Family (admin only)</label>
+    <input type="text" name="create_new_job_family" value="{{ create_form.new_job_family }}" placeholder="Optional new family">
+
+    <label>Or New Job Function (admin only)</label>
+    <input type="text" name="create_new_job_function" value="{{ create_form.new_job_function }}" placeholder="Optional new function">
+    {% else %}
+    <p class="small"><strong>Admin-only:</strong> Creating new family/function values outside CXC Taxonomy is disabled.</p>
+    {% endif %}
+
+    <label>Key Responsibilities</label>
+    <textarea name="create_key_responsibilities" rows="4" placeholder="Describe key responsibilities" required>{{ create_form.key_responsibilities }}</textarea>
+
+    <button type="submit">Save Mapping</button>
+  </form>
 </div>
 {% endif %}
+{% endif %}
+
+<script>
+  (function () {
+    const familyMap = {{ kornferry_family_function_map_json|safe }};
+    const familySelect = document.getElementById("create_job_family");
+    const functionSelect = document.getElementById("create_job_function");
+    if (!familySelect || !functionSelect) {
+      return;
+    }
+
+    function renderFunctions() {
+      const family = familySelect.value || "";
+      const selectedFunction = functionSelect.getAttribute("data-selected") || "";
+      const options = familyMap[family] || [];
+
+      functionSelect.innerHTML = "";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Select job function";
+      functionSelect.appendChild(placeholder);
+
+      options.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        if (selectedFunction && selectedFunction === value) {
+          option.selected = true;
+        }
+        functionSelect.appendChild(option);
+      });
+    }
+
+    familySelect.addEventListener("change", function () {
+      functionSelect.setAttribute("data-selected", "");
+      renderFunctions();
+    });
+
+    renderFunctions();
+  })();
+</script>
 {% endblock %}

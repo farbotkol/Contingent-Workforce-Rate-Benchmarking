@@ -11,11 +11,16 @@ import yaml
 import subprocess
 import sys
 from urllib.parse import urlparse, parse_qs, unquote
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort, Response
 import requests
 from bs4 import BeautifulSoup
+
+try:
+    import pandas as pd
+except Exception:  # pragma: no cover - defensive fallback for minimal runtime images
+    pd = None
 
 from processing.normalization import RoleNormalizer
 from processing.conversion import SalaryConverter
@@ -98,6 +103,333 @@ MAJOR_CITIES_BY_COUNTRY: Dict[str, List[str]] = {
 BASE_DIR = os.path.dirname(__file__)
 ROLE_MAPPING_PATH = os.path.join(BASE_DIR, "config", "role_mapping.yaml")
 TAXONOMY_RULES_PATH = os.path.join(BASE_DIR, "config", "taxonomy_rules.yaml")
+KORNFERRY_TAXONOMY_PATH = os.path.join(
+    BASE_DIR,
+    "Role Taxonomy Updates",
+    "CXC Role Taxonomy 0732026.xlsx",
+)
+KORNFERRY_TAXONOMY_SHEET = "Role Taxonomy"
+CUSTOM_ROLE_TAXONOMY_PATH = os.path.join(BASE_DIR, "config", "custom_role_taxonomy.yaml")
+
+
+def allow_manual_taxonomy_override() -> bool:
+    """Return True when admin-only manual taxonomy overrides are enabled."""
+    value = os.getenv("ALLOW_MANUAL_TAXONOMY_OVERRIDE", "false").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+def _clean_text(value: Any) -> str:
+    if value is None:
+        return ""
+    cleaned = str(value).strip()
+    if cleaned.lower() == "nan":
+        return ""
+    return cleaned
+
+
+def _normalize_lookup_key(value: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+    return re.sub(r"\s+", " ", cleaned)
+
+
+def load_custom_role_taxonomy_config() -> Dict[str, Any]:
+    if not os.path.exists(CUSTOM_ROLE_TAXONOMY_PATH):
+        return {"roles": []}
+
+    with open(CUSTOM_ROLE_TAXONOMY_PATH, "r", encoding="utf-8") as file:
+        loaded = yaml.safe_load(file) or {}
+
+    roles = loaded.get("roles")
+    if not isinstance(roles, list):
+        loaded["roles"] = []
+
+    return loaded
+
+
+def save_custom_role_taxonomy_config(config: Dict[str, Any]) -> None:
+    with open(CUSTOM_ROLE_TAXONOMY_PATH, "w", encoding="utf-8") as file:
+        yaml.safe_dump(config, file, sort_keys=False, allow_unicode=True)
+
+
+def load_custom_role_taxonomy_rows() -> List[Dict[str, str]]:
+    config = load_custom_role_taxonomy_config()
+    rows = []
+    for raw in config.get("roles") or []:
+        role_name = _clean_text(raw.get("job_role"))
+        if not role_name:
+            continue
+        rows.append(
+            {
+                "job_family": _clean_text(raw.get("job_family")),
+                "job_function": _clean_text(raw.get("job_function")),
+                "job_role": role_name,
+                "key_responsibilities": _clean_text(raw.get("key_responsibilities")),
+                "source": "Custom",
+            }
+        )
+    return rows
+
+
+def add_custom_role_taxonomy_entry(
+    job_family: str,
+    job_function: str,
+    job_role: str,
+    key_responsibilities: str,
+) -> Dict[str, str]:
+    family_value = _clean_text(job_family)
+    function_value = _clean_text(job_function)
+    role_value = _clean_text(job_role)
+    responsibilities_value = _clean_text(key_responsibilities)
+
+    if not family_value:
+        raise ValueError("Job family is required")
+    if not function_value:
+        raise ValueError("Job function is required")
+    if not role_value:
+        raise ValueError("Role title is required")
+    if not responsibilities_value:
+        raise ValueError("Key responsibilities are required")
+
+    config = load_custom_role_taxonomy_config()
+    roles = config.setdefault("roles", [])
+
+    role_key = _normalize_lookup_key(role_value)
+    entry = {
+        "job_family": family_value,
+        "job_function": function_value,
+        "job_role": role_value,
+        "key_responsibilities": responsibilities_value,
+        "source": "Custom",
+    }
+
+    replaced = False
+    for index, existing in enumerate(roles):
+        existing_role_key = _normalize_lookup_key(_clean_text(existing.get("job_role")))
+        if existing_role_key == role_key:
+            roles[index] = entry
+            replaced = True
+            break
+
+    if not replaced:
+        roles.append(entry)
+
+    save_custom_role_taxonomy_config(config)
+    return entry
+
+
+def load_kornferry_role_taxonomy_rows() -> List[Dict[str, str]]:
+    if not os.path.exists(KORNFERRY_TAXONOMY_PATH):
+        return []
+    if pd is None:
+        return []
+
+    frame = pd.read_excel(KORNFERRY_TAXONOMY_PATH, sheet_name=KORNFERRY_TAXONOMY_SHEET)
+
+    rows: List[Dict[str, str]] = []
+    for _, raw in frame.iterrows():
+        role_name = _clean_text(raw.get("Job Role"))
+        if not role_name:
+            continue
+        rows.append(
+            {
+                "job_family": _clean_text(raw.get("Job Family")),
+                "job_function": _clean_text(raw.get("Job Function")),
+                "job_role": role_name,
+                "key_responsibilities": _clean_text(raw.get("Key Responsibilities")),
+                "source": "KornFerry",
+            }
+        )
+
+    return rows
+
+
+def load_role_taxonomy_catalog() -> Dict[str, Any]:
+    source_error = None
+    try:
+        kornferry_rows = load_kornferry_role_taxonomy_rows()
+    except Exception as exc:
+        kornferry_rows = []
+        source_error = str(exc)
+
+    custom_rows = load_custom_role_taxonomy_rows()
+    combined_by_role: Dict[str, Dict[str, str]] = {}
+
+    for row in kornferry_rows:
+        role_key = _normalize_lookup_key(row.get("job_role", ""))
+        if not role_key:
+            continue
+        combined_by_role[role_key] = row
+
+    # Custom entries intentionally override KornFerry rows when job role names collide.
+    for row in custom_rows:
+        role_key = _normalize_lookup_key(row.get("job_role", ""))
+        if not role_key:
+            continue
+        combined_by_role[role_key] = row
+
+    combined_rows = sorted(
+        combined_by_role.values(),
+        key=lambda row: (
+            (row.get("job_family") or "").lower(),
+            (row.get("job_function") or "").lower(),
+            (row.get("job_role") or "").lower(),
+        ),
+    )
+
+    families: List[str] = []
+    family_function_map: Dict[str, List[str]] = {}
+    for row in combined_rows:
+        family = _clean_text(row.get("job_family"))
+        function = _clean_text(row.get("job_function"))
+        if family and family not in families:
+            families.append(family)
+        if family and function:
+            family_function_map.setdefault(family, [])
+            if function not in family_function_map[family]:
+                family_function_map[family].append(function)
+
+    for family in family_function_map:
+        family_function_map[family] = sorted(family_function_map[family], key=str.lower)
+
+    families.sort(key=str.lower)
+
+    return {
+        "rows": combined_rows,
+        "families": families,
+        "family_function_map": family_function_map,
+        "kornferry_count": len(kornferry_rows),
+        "custom_count": len(custom_rows),
+        "total_count": len(combined_rows),
+        "source_path": KORNFERRY_TAXONOMY_PATH,
+        "source_error": source_error,
+    }
+
+
+def find_role_taxonomy_match(
+    role_title: str,
+    canonical_role: Optional[str] = None,
+    taxonomy_rows: Optional[List[Dict[str, str]]] = None,
+) -> Optional[Dict[str, str]]:
+    rows = taxonomy_rows if taxonomy_rows is not None else load_role_taxonomy_catalog()["rows"]
+    if not rows:
+        return None
+
+    candidates = []
+    for value in [role_title, canonical_role or ""]:
+        cleaned = _clean_text(value)
+        if cleaned and cleaned not in candidates:
+            candidates.append(cleaned)
+
+    if not candidates:
+        return None
+
+    role_lookup = {
+        _normalize_lookup_key(row.get("job_role", "")): row
+        for row in rows
+        if _normalize_lookup_key(row.get("job_role", ""))
+    }
+
+    for candidate in candidates:
+        candidate_key = _normalize_lookup_key(candidate)
+        if candidate_key in role_lookup:
+            return role_lookup[candidate_key]
+
+    # Fuzzy fallback for close role names; avoid tiny keys to reduce false positives.
+    for candidate in candidates:
+        candidate_key = _normalize_lookup_key(candidate)
+        if len(candidate_key) < 4:
+            continue
+        for role_key, row in role_lookup.items():
+            if role_key in candidate_key or candidate_key in role_key:
+                return row
+
+    return None
+
+
+def ensure_role_taxonomy_mapping(
+    role_title: str,
+    canonical_role: Optional[str] = None,
+    taxonomy_rows: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, str]:
+    taxonomy_match = find_role_taxonomy_match(role_title, canonical_role, taxonomy_rows)
+    if taxonomy_match and taxonomy_match.get("job_family") and taxonomy_match.get("job_function"):
+        return taxonomy_match
+
+    label = _clean_text(canonical_role) if _clean_text(canonical_role) and _clean_text(canonical_role) != "Unmapped Role" else _clean_text(role_title)
+    if not label:
+        label = "this role"
+    raise ValueError(
+        "No Job Family/Job Function mapping exists for "
+        f"'{label}'. Open the Taxonomy tab and create the mapping before running market research or benchmarks."
+    )
+
+
+def suggest_kornferry_taxonomy_mapping(
+    role_title: str,
+    canonical_role: Optional[str] = None,
+    max_suggestions: int = 5,
+) -> Dict[str, Any]:
+    """Suggest family/function mappings using KornFerry taxonomy rows only."""
+    rows = load_kornferry_role_taxonomy_rows()
+    if not rows:
+        return {"rows": [], "best": None}
+
+    candidates: List[str] = []
+    for value in [role_title, canonical_role or ""]:
+        cleaned = _clean_text(value)
+        if cleaned and cleaned not in candidates:
+            candidates.append(cleaned)
+
+    if not candidates:
+        return {"rows": [], "best": None}
+
+    scored: List[Tuple[int, Dict[str, str]]] = []
+    for row in rows:
+        role_value = _clean_text(row.get("job_role"))
+        if not role_value:
+            continue
+
+        role_key = _normalize_lookup_key(role_value)
+        role_tokens = set(role_key.split())
+        best_score = 0
+
+        for candidate in candidates:
+            candidate_key = _normalize_lookup_key(candidate)
+            if not candidate_key:
+                continue
+
+            if candidate_key == role_key:
+                best_score = max(best_score, 100)
+                continue
+
+            if role_key in candidate_key or candidate_key in role_key:
+                best_score = max(best_score, 80)
+                continue
+
+            candidate_tokens = set(candidate_key.split())
+            if role_tokens and candidate_tokens:
+                overlap = len(role_tokens.intersection(candidate_tokens))
+                if overlap:
+                    token_score = int((overlap / max(len(role_tokens), len(candidate_tokens))) * 70)
+                    best_score = max(best_score, token_score)
+
+        if best_score > 0:
+            scored.append((best_score, row))
+
+    scored.sort(
+        key=lambda item: (
+            -item[0],
+            (_clean_text(item[1].get("job_family"))).lower(),
+            (_clean_text(item[1].get("job_function"))).lower(),
+            (_clean_text(item[1].get("job_role"))).lower(),
+        )
+    )
+
+    top_rows = [row for _, row in scored[:max_suggestions]]
+    return {
+        "rows": top_rows,
+        "best": top_rows[0] if top_rows else None,
+    }
 
 
 def default_taxonomy_rules() -> Dict[str, Any]:
@@ -257,8 +589,8 @@ def classify_role_taxonomy_with_rules(role_name: str, rules_config: Optional[Dic
 
 
 def get_branding_config(branding_key: Optional[str]) -> Dict[str, Any]:
-    key = (branding_key or "oncore").strip().lower()
-    return BRANDING_CONFIGS.get(key, BRANDING_CONFIGS["oncore"])
+    key = (branding_key or "cxc").strip().lower()
+    return BRANDING_CONFIGS.get(key, BRANDING_CONFIGS["cxc"])
 
 
 @app.context_processor
@@ -272,17 +604,17 @@ def inject_branding() -> Dict[str, Any]:
             if branding_key:
                 db.set_setting("branding", branding_key)
         else:
-            branding_key = db.get_setting("branding", "oncore")
+            branding_key = db.get_setting("branding", "cxc")
         branding = get_branding_config(branding_key)
     except Exception:
-        branding = get_branding_config("oncore")
+        branding = get_branding_config("cxc")
     finally:
         if db:
             db.close()
 
     return {
         "branding": branding,
-        "branding_key": branding.get("key", "oncore"),
+        "branding_key": branding.get("key", "cxc"),
     }
 
 
@@ -359,6 +691,61 @@ def parse_uploaded_rows(file_storage) -> List[dict]:
 
     text = raw_content.decode("utf-8-sig")
     return parse_csv_rows(text)
+
+
+def parse_normalize_excel_rows(file_storage) -> List[dict]:
+    """Parse normalize-tab Excel uploads where Column A=role title and Column B=description."""
+    if pd is None:
+        raise ValueError("Excel upload requires pandas/openpyxl support")
+    if not file_storage or not file_storage.filename:
+        raise ValueError("Excel file is required")
+
+    filename = (file_storage.filename or "").lower()
+    if not (filename.endswith(".xlsx") or filename.endswith(".xls")):
+        raise ValueError("Upload an Excel file (.xlsx or .xls)")
+
+    raw_content = file_storage.read()
+    if not raw_content:
+        raise ValueError("Uploaded file is empty")
+
+    try:
+        frame = pd.read_excel(io.BytesIO(raw_content), header=None)
+    except Exception as exc:
+        raise ValueError("Unable to read Excel file") from exc
+
+    if frame.empty:
+        raise ValueError("No rows found in uploaded Excel file")
+
+    rows: List[dict] = []
+    for index, raw in enumerate(frame.itertuples(index=False, name=None), start=1):
+        role_title = _clean_text(raw[0] if len(raw) > 0 else "")
+        description = _clean_text(raw[1] if len(raw) > 1 else "")
+
+        # Skip a likely header row if present.
+        if index == 1:
+            role_key = _normalize_lookup_key(role_title)
+            description_key = _normalize_lookup_key(description)
+            if (
+                ("role" in role_key and ("title" in role_key or "name" in role_key))
+                and ("description" in description_key or "deliverable" in description_key or "responsibil" in description_key)
+            ):
+                continue
+
+        if not role_title and not description:
+            continue
+
+        rows.append(
+            {
+                "line": index,
+                "client_role_title": role_title,
+                "description": description,
+            }
+        )
+
+    if not rows:
+        raise ValueError("No valid rows found in uploaded Excel file")
+
+    return rows
 
 
 def parse_bulk_benchmark_rows(file_storage) -> List[dict]:
@@ -664,11 +1051,25 @@ def default_city(country: str) -> str:
     return cities[0] if cities else ""
 
 
-def classify_role_taxonomy(role_name: str) -> Dict[str, str]:
-    result = classify_role_taxonomy_with_rules(role_name)
+def classify_role_taxonomy(
+    role_name: str,
+    canonical_role: Optional[str] = None,
+    taxonomy_rows: Optional[List[Dict[str, str]]] = None,
+) -> Dict[str, str]:
+    taxonomy_match = find_role_taxonomy_match(role_name, canonical_role, taxonomy_rows)
+    if taxonomy_match:
+        return {
+            "family": taxonomy_match.get("job_family") or "",
+            "function": taxonomy_match.get("job_function") or "",
+            "source": taxonomy_match.get("source") or "",
+            "role": taxonomy_match.get("job_role") or "",
+        }
+
     return {
-        "family": result.get("family") or "Information & Communication Technology",
-        "function": result.get("function") or "Other",
+        "family": "Unmapped - setup required",
+        "function": "Unmapped - setup required",
+        "source": "",
+        "role": "",
     }
 
 
@@ -766,10 +1167,14 @@ def process_single_benchmark(form: dict) -> dict:
         calculator = RateBandCalculator()
         detector = MarketModeDetector()
         db = BenchmarkDatabase()
+        taxonomy_catalog = load_role_taxonomy_catalog()
+        taxonomy_catalog = load_role_taxonomy_catalog()
 
         normalized = normalizer.normalize(form["role"], form["level"] or None)
         canonical_role = normalized["canonical_role"]
         seniority_level = normalized["seniority_level"]
+        taxonomy_catalog = load_role_taxonomy_catalog()
+        taxonomy = ensure_role_taxonomy_mapping(form["role"], canonical_role, taxonomy_catalog["rows"])
 
         if any(key in form for key in ["rate_low", "rate_medium", "rate_high", "salary_low", "salary_medium", "salary_high"]):
             daily_rates = parse_number_inputs([
@@ -841,6 +1246,9 @@ def process_single_benchmark(form: dict) -> dict:
         return {
             "role": canonical_role,
             "level": seniority_level,
+            "job_family": taxonomy.get("job_family") or "",
+            "job_function": taxonomy.get("job_function") or "",
+            "taxonomy_source": taxonomy.get("source") or "",
             "country": form["country"],
             "city": (form.get("city") or default_city(form["country"])),
             "currency": currency,
@@ -894,6 +1302,8 @@ def process_bulk_benchmark(form: dict) -> dict:
                     normalized = normalizer.normalize(role, level or None)
                     canonical_role = normalized["canonical_role"]
                     seniority_level = normalized["seniority_level"]
+
+                taxonomy = ensure_role_taxonomy_mapping(role, canonical_role, taxonomy_catalog["rows"])
 
                 structured_daily_rates = parse_number_inputs([
                     row.get("rate_low", ""),
@@ -953,6 +1363,8 @@ def process_bulk_benchmark(form: dict) -> dict:
                         "status": "ok",
                         "input_role": role,
                         "role": canonical_role,
+                        "job_family": taxonomy.get("job_family") or "",
+                        "job_function": taxonomy.get("job_function") or "",
                         "level": seniority_level,
                         "country": form["country"],
                         "city": (row.get("city") or form.get("city") or default_city(form["country"])),
@@ -1004,6 +1416,7 @@ def process_bulk_normalize(parsed_rows: List[dict], country: str, source: str) -
         raise ValueError("No rows to normalize")
 
     normalizer = RoleNormalizer()
+    taxonomy_catalog = load_role_taxonomy_catalog()
     normalized_rows = []
     for row in parsed_rows:
         role = (row.get("role") or "").strip()
@@ -1011,13 +1424,24 @@ def process_bulk_normalize(parsed_rows: List[dict], country: str, source: str) -
         level = (row.get("level") or "").strip()
         normalize_input = f"{role} {description}".strip()
         normalized = normalizer.normalize(normalize_input, level or None)
+        taxonomy = find_role_taxonomy_match(
+            role_title=role or normalize_input,
+            canonical_role=normalized["canonical_role"],
+            taxonomy_rows=taxonomy_catalog["rows"],
+        )
         normalized_rows.append(
             {
                 **row,
+                "client_role_title": role,
+                "framework_role": normalized["canonical_role"],
                 "canonical_role": normalized["canonical_role"],
                 "seniority_level": normalized["seniority_level"],
                 "confidence": normalized["confidence"],
                 "is_unmapped": normalized["canonical_role"] == "Unmapped Role",
+                "job_family": (taxonomy or {}).get("job_family", ""),
+                "job_function": (taxonomy or {}).get("job_function", ""),
+                "taxonomy_source": (taxonomy or {}).get("source", ""),
+                "requires_taxonomy_setup": taxonomy is None,
             }
         )
 
@@ -1038,16 +1462,28 @@ def process_upload_normalize(form: dict, use_sample: bool) -> dict:
         parsed_rows = parse_uploaded_rows(file_storage)
 
     normalizer = RoleNormalizer()
+    taxonomy_catalog = load_role_taxonomy_catalog()
     normalized_rows = []
     for row in parsed_rows:
         normalize_input = f"{row['title']} {row['description']}".strip()
         normalized = normalizer.normalize(normalize_input)
+        taxonomy = find_role_taxonomy_match(
+            role_title=row.get("title") or normalize_input,
+            canonical_role=normalized["canonical_role"],
+            taxonomy_rows=taxonomy_catalog["rows"],
+        )
         normalized_rows.append(
             {
                 **row,
+                "client_role_title": row.get("title", ""),
+                "framework_role": normalized["canonical_role"],
                 "canonical_role": normalized["canonical_role"],
                 "seniority_level": normalized["seniority_level"],
                 "confidence": normalized["confidence"],
+                "job_family": (taxonomy or {}).get("job_family", ""),
+                "job_function": (taxonomy or {}).get("job_function", ""),
+                "taxonomy_source": (taxonomy or {}).get("source", ""),
+                "requires_taxonomy_setup": taxonomy is None,
                 "rates": "",
                 "salaries": "",
             }
@@ -1104,6 +1540,11 @@ def process_upload_benchmark(form: dict, countries: List[str]) -> dict:
 
                 canonical_role = row.get("canonical_role", "").strip()
                 seniority_level = row.get("seniority_level", "Mid").strip() or "Mid"
+                taxonomy = ensure_role_taxonomy_mapping(
+                    role_title=row.get("title", "") or canonical_role,
+                    canonical_role=canonical_role,
+                    taxonomy_rows=taxonomy_catalog["rows"],
+                )
                 rates_raw = row.get("rates", "") or default_rates
                 salaries_raw = row.get("salaries", "") or default_salaries
 
@@ -1177,7 +1618,11 @@ def process_upload_benchmark(form: dict, countries: List[str]) -> dict:
                     {
                         "line": row.get("line"),
                         "status": "ok",
+                        "client_role_title": row.get("client_role_title") or row.get("title", ""),
+                        "framework_role": canonical_role,
                         "role": canonical_role,
+                        "job_family": taxonomy.get("job_family") or "",
+                        "job_function": taxonomy.get("job_function") or "",
                         "level": seniority_level,
                         "country": country,
                         "city": city,
@@ -1198,6 +1643,8 @@ def process_upload_benchmark(form: dict, countries: List[str]) -> dict:
                     {
                         "line": row.get("line"),
                         "status": "error",
+                        "client_role_title": row.get("client_role_title") or row.get("title", ""),
+                        "framework_role": row.get("framework_role") or row.get("canonical_role", ""),
                         "role": row.get("canonical_role", ""),
                         "country": row.get("country", "") or selected_country,
                         "city": row.get("city", "") or form.get("city", "") or default_city(selected_country),
@@ -1352,12 +1799,22 @@ def benchmark_page():
 
                 normalizer = RoleNormalizer()
                 normalized = normalizer.normalize(form["role"], form["level"] or None)
+                taxonomy_catalog = load_role_taxonomy_catalog()
+                taxonomy = find_role_taxonomy_match(
+                    role_title=form["role"],
+                    canonical_role=normalized["canonical_role"],
+                    taxonomy_rows=taxonomy_catalog["rows"],
+                )
                 normalize_result = {
                     "original_role": form["role"],
                     "canonical_role": normalized["canonical_role"],
                     "seniority_level": normalized["seniority_level"],
                     "confidence": normalized["confidence"],
                     "is_unmapped": normalized["canonical_role"] == "Unmapped Role",
+                    "job_family": (taxonomy or {}).get("job_family", ""),
+                    "job_function": (taxonomy or {}).get("job_function", ""),
+                    "taxonomy_source": (taxonomy or {}).get("source", ""),
+                    "requires_taxonomy_setup": taxonomy is None,
                 }
             except Exception as exc:
                 normalize_error = str(exc)
@@ -1366,12 +1823,22 @@ def benchmark_page():
             try:
                 normalizer = RoleNormalizer()
                 normalized = normalizer.normalize(form["role"], form["level"] or None)
+                taxonomy_catalog = load_role_taxonomy_catalog()
+                taxonomy = find_role_taxonomy_match(
+                    role_title=form["role"],
+                    canonical_role=normalized["canonical_role"],
+                    taxonomy_rows=taxonomy_catalog["rows"],
+                )
                 normalize_result = {
                     "original_role": form["role"],
                     "canonical_role": normalized["canonical_role"],
                     "seniority_level": normalized["seniority_level"],
                     "confidence": normalized["confidence"],
                     "is_unmapped": normalized["canonical_role"] == "Unmapped Role",
+                    "job_family": (taxonomy or {}).get("job_family", ""),
+                    "job_function": (taxonomy or {}).get("job_function", ""),
+                    "taxonomy_source": (taxonomy or {}).get("source", ""),
+                    "requires_taxonomy_setup": taxonomy is None,
                 }
                 result = process_single_benchmark(form)
             except Exception as exc:
@@ -1429,6 +1896,8 @@ def salary_compare_page():
             normalized = normalizer.normalize(form["role"], form["level"] or None)
             canonical_role = normalized["canonical_role"]
             seniority_level = normalized["seniority_level"]
+            taxonomy_catalog = load_role_taxonomy_catalog()
+            taxonomy = ensure_role_taxonomy_mapping(form["role"], canonical_role, taxonomy_catalog["rows"])
 
             db = BenchmarkDatabase()
             benchmark_row = find_latest_benchmark_for_compare(
@@ -1458,6 +1927,8 @@ def salary_compare_page():
                 "input_role": form["role"],
                 "role": canonical_role,
                 "level": seniority_level,
+                "job_family": taxonomy.get("job_family") or "",
+                "job_function": taxonomy.get("job_function") or "",
                 "country": form["country"],
                 "city": form["city"],
                 "currency": benchmark_row.get("currency") or converter.get_currency(form["country"]),
@@ -1634,20 +2105,263 @@ def upload_page():
 @app.route("/normalize", methods=["GET", "POST"])
 def normalize_page():
     form = {"title": ""}
+    bulk_form = {"filename": ""}
+    create_form = {
+        "job_family": "",
+        "job_function": "",
+        "new_job_family": "",
+        "new_job_function": "",
+        "framework_role": "",
+        "key_responsibilities": "",
+        "canonical_role": "",
+        "input_title": "",
+    }
     error = None
+    bulk_error = None
+    success = None
     result = None
+    bulk_result = None
+    taxonomy_catalog = load_role_taxonomy_catalog()
+    kornferry_rows = load_kornferry_role_taxonomy_rows()
+    kornferry_families: List[str] = []
+    kornferry_family_function_map: Dict[str, List[str]] = {}
+    for row in kornferry_rows:
+        family = _clean_text(row.get("job_family"))
+        function = _clean_text(row.get("job_function"))
+        if family and family not in kornferry_families:
+            kornferry_families.append(family)
+        if family and function:
+            kornferry_family_function_map.setdefault(family, [])
+            if function not in kornferry_family_function_map[family]:
+                kornferry_family_function_map[family].append(function)
+    for family in kornferry_family_function_map:
+        kornferry_family_function_map[family] = sorted(kornferry_family_function_map[family], key=str.lower)
+    kornferry_families.sort(key=str.lower)
+
+    def _build_normalize_result(input_title: str) -> Dict[str, Any]:
+        normalizer = RoleNormalizer()
+        normalized = normalizer.normalize(input_title)
+        taxonomy_match = find_role_taxonomy_match(
+            role_title=input_title,
+            canonical_role=normalized["canonical_role"],
+            taxonomy_rows=taxonomy_catalog["rows"],
+        )
+
+        enriched = dict(normalized)
+        enriched["job_family"] = (taxonomy_match or {}).get("job_family", "")
+        enriched["job_function"] = (taxonomy_match or {}).get("job_function", "")
+        enriched["taxonomy_source"] = (taxonomy_match or {}).get("source", "")
+        enriched["taxonomy_role"] = (taxonomy_match or {}).get("job_role", "")
+        enriched["key_responsibilities"] = (taxonomy_match or {}).get("key_responsibilities", "")
+        enriched["requires_taxonomy_setup"] = taxonomy_match is None
+        return enriched
 
     if request.method == "POST":
+        action = request.form.get("action", "normalize_run").strip()
         form = {"title": request.form.get("normalize_title", "").strip()}
-        try:
-            if not form["title"]:
-                raise ValueError("Job title is required")
-            normalizer = RoleNormalizer()
-            result = normalizer.normalize(form["title"])
-        except Exception as exc:
-            error = str(exc)
+        create_form = {
+            "job_family": request.form.get("create_job_family", "").strip(),
+            "job_function": request.form.get("create_job_function", "").strip(),
+            "new_job_family": request.form.get("create_new_job_family", "").strip(),
+            "new_job_function": request.form.get("create_new_job_function", "").strip(),
+            "framework_role": request.form.get("create_framework_role", "").strip(),
+            "key_responsibilities": request.form.get("create_key_responsibilities", "").strip(),
+            "canonical_role": request.form.get("create_canonical_role", "").strip(),
+            "input_title": request.form.get("create_input_title", "").strip(),
+        }
 
-    return render_template("normalize.html", normalize_form=form, error=error, result=result, **base_context())
+        try:
+            if action == "normalize_bulk_export":
+                payload_b64 = request.form.get("normalize_bulk_payload_b64", "").strip()
+                if not payload_b64:
+                    raise ValueError("Normalized payload is missing")
+
+                payload_json = base64.b64decode(payload_b64.encode("utf-8")).decode("utf-8")
+                normalized_rows = json.loads(payload_json)
+                if not isinstance(normalized_rows, list):
+                    raise ValueError("Invalid normalized payload")
+
+                csv_stream = io.StringIO()
+                fieldnames = [
+                    "line",
+                    "client_role_title",
+                    "description",
+                    "framework_role",
+                    "seniority_level",
+                    "confidence",
+                    "job_family",
+                    "job_function",
+                    "taxonomy_source",
+                    "requires_taxonomy_setup",
+                ]
+                writer = csv.DictWriter(csv_stream, fieldnames=fieldnames)
+                writer.writeheader()
+
+                for row in normalized_rows:
+                    writer.writerow(
+                        {
+                            "line": row.get("line", ""),
+                            "client_role_title": row.get("client_role_title", ""),
+                            "description": row.get("description", ""),
+                            "framework_role": row.get("framework_role") or row.get("canonical_role", ""),
+                            "seniority_level": row.get("seniority_level", ""),
+                            "confidence": row.get("confidence", ""),
+                            "job_family": row.get("job_family", ""),
+                            "job_function": row.get("job_function", ""),
+                            "taxonomy_source": row.get("taxonomy_source", ""),
+                            "requires_taxonomy_setup": row.get("requires_taxonomy_setup", ""),
+                        }
+                    )
+
+                csv_output = csv_stream.getvalue()
+                return Response(
+                    csv_output,
+                    mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=normalize_bulk_results.csv"},
+                )
+
+            if action == "normalize_add_role_entry":
+                selected_family = create_form["job_family"]
+                selected_function = create_form["job_function"]
+                new_family = create_form["new_job_family"]
+                new_function = create_form["new_job_function"]
+                framework_role = create_form["framework_role"]
+                key_responsibilities = create_form["key_responsibilities"]
+                canonical_role = create_form["canonical_role"]
+                input_title = create_form["input_title"]
+
+                final_family = new_family or selected_family
+                final_function = new_function or selected_function
+
+                manual_override_requested = bool(new_family or new_function)
+                if manual_override_requested and not allow_manual_taxonomy_override():
+                    raise ValueError(
+                        "Only admins can create new Job Family/Job Function outside the KornFerry taxonomy. "
+                        "Please select a KornFerry family/function."
+                    )
+
+                if not final_family:
+                    raise ValueError("Select an existing job family or enter a new one")
+                if not final_function:
+                    raise ValueError("Select an existing job function or enter a new one")
+                if not framework_role:
+                    raise ValueError("Framework role is required")
+                if framework_role == "Unmapped Role":
+                    raise ValueError("Select a valid framework role before saving")
+                if not input_title:
+                    raise ValueError("Input role title is required")
+
+                entry = add_custom_role_taxonomy_entry(
+                    job_family=final_family,
+                    job_function=final_function,
+                    job_role=framework_role,
+                    key_responsibilities=key_responsibilities,
+                )
+
+                # Map client-specific title to framework role after normalization.
+                canonical_to_use = framework_role
+                if canonical_role and canonical_role != "Unmapped Role" and canonical_role.lower() == framework_role.lower():
+                    canonical_to_use = canonical_role
+
+                add_role_mapping_alias(canonical_to_use, input_title)
+
+                taxonomy_catalog = load_role_taxonomy_catalog()
+
+                success = (
+                    f"Mapped '{input_title}' to framework role '{entry['job_role']}' "
+                    f"({entry['job_family']} / {entry['job_function']})"
+                )
+
+                form["title"] = input_title
+                result = _build_normalize_result(form["title"])
+            else:
+                if action == "normalize_bulk_upload":
+                    file_storage = request.files.get("normalize_roles_file")
+                    bulk_form = {"filename": file_storage.filename if file_storage else ""}
+                    parsed_rows = parse_normalize_excel_rows(file_storage)
+
+                    normalizer = RoleNormalizer()
+                    normalized_rows: List[Dict[str, Any]] = []
+                    for row in parsed_rows:
+                        role_title = row.get("client_role_title", "")
+                        description = row.get("description", "")
+                        normalize_input = f"{role_title} {description}".strip()
+                        normalized = normalizer.normalize(normalize_input)
+                        taxonomy = find_role_taxonomy_match(
+                            role_title=role_title or normalize_input,
+                            canonical_role=normalized["canonical_role"],
+                            taxonomy_rows=taxonomy_catalog["rows"],
+                        )
+
+                        normalized_rows.append(
+                            {
+                                "line": row.get("line"),
+                                "client_role_title": role_title,
+                                "description": description,
+                                "framework_role": normalized["canonical_role"],
+                                "seniority_level": normalized["seniority_level"],
+                                "confidence": normalized["confidence"],
+                                "job_family": (taxonomy or {}).get("job_family", ""),
+                                "job_function": (taxonomy or {}).get("job_function", ""),
+                                "taxonomy_source": (taxonomy or {}).get("source", ""),
+                                "requires_taxonomy_setup": taxonomy is None,
+                            }
+                        )
+
+                    bulk_result = {
+                        "filename": bulk_form["filename"],
+                        "count": len(normalized_rows),
+                        "payload_b64": base64.b64encode(json.dumps(normalized_rows).encode("utf-8")).decode("utf-8"),
+                        "rows": normalized_rows,
+                    }
+                else:
+                    if not form["title"]:
+                        raise ValueError("Job title is required")
+
+                    result = _build_normalize_result(form["title"])
+                    if result.get("requires_taxonomy_setup"):
+                        kf_suggestions = suggest_kornferry_taxonomy_mapping(
+                            role_title=form["title"],
+                            canonical_role=result.get("canonical_role"),
+                            max_suggestions=5,
+                        )
+                        best = kf_suggestions.get("best") or {}
+
+                        create_form["job_family"] = _clean_text(best.get("job_family"))
+                        create_form["job_function"] = _clean_text(best.get("job_function"))
+                        create_form["framework_role"] = (
+                            _clean_text(best.get("job_role"))
+                            or (result.get("canonical_role", "") if result.get("canonical_role") != "Unmapped Role" else "")
+                        )
+                        create_form["canonical_role"] = result.get("canonical_role", "")
+                        create_form["input_title"] = form["title"]
+                        result["kornferry_suggestions"] = kf_suggestions.get("rows") or []
+        except Exception as exc:
+            if action == "normalize_bulk_upload":
+                bulk_error = str(exc)
+            else:
+                error = str(exc)
+
+    return render_template(
+        "normalize.html",
+        normalize_form=form,
+        normalize_bulk_form=bulk_form,
+        create_form=create_form,
+        error=error,
+        bulk_error=bulk_error,
+        success=success,
+        result=result,
+        bulk_result=bulk_result,
+        taxonomy_catalog=taxonomy_catalog,
+        taxonomy_families=taxonomy_catalog["families"],
+        taxonomy_family_function_map=taxonomy_catalog["family_function_map"],
+        taxonomy_family_function_map_json=json.dumps(taxonomy_catalog["family_function_map"]),
+        kornferry_families=kornferry_families,
+        kornferry_family_function_map=kornferry_family_function_map,
+        kornferry_family_function_map_json=json.dumps(kornferry_family_function_map),
+        allow_manual_taxonomy_override=allow_manual_taxonomy_override(),
+        **base_context(),
+    )
 
 
 @app.route("/convert", methods=["GET", "POST"])
@@ -1723,6 +2437,7 @@ def taxonomy_page():
 
     taxonomy_rules = load_taxonomy_rules()
     role_mapping_config = load_role_mapping_config()
+    taxonomy_catalog = load_role_taxonomy_catalog()
 
     test_form = {
         "title": "",
@@ -1737,6 +2452,15 @@ def taxonomy_page():
     mapping_form = {
         "canonical_role": "",
         "alias": "",
+    }
+    create_form = {
+        "job_family": "",
+        "job_function": "",
+        "new_job_family": "",
+        "new_job_function": "",
+        "role_title": "",
+        "key_responsibilities": "",
+        "canonical_role": "",
     }
 
     if request.method == "POST":
@@ -1755,6 +2479,15 @@ def taxonomy_page():
             "canonical_role": request.form.get("mapping_canonical_role", "").strip(),
             "alias": request.form.get("mapping_alias", "").strip(),
         }
+        create_form = {
+            "job_family": request.form.get("create_job_family", "").strip(),
+            "job_function": request.form.get("create_job_function", "").strip(),
+            "new_job_family": request.form.get("create_new_job_family", "").strip(),
+            "new_job_function": request.form.get("create_new_job_function", "").strip(),
+            "role_title": request.form.get("create_role_title", "").strip(),
+            "key_responsibilities": request.form.get("create_key_responsibilities", "").strip(),
+            "canonical_role": request.form.get("create_canonical_role", "").strip(),
+        }
 
         try:
             if action == "taxonomy_test":
@@ -1763,16 +2496,111 @@ def taxonomy_page():
 
                 normalizer = RoleNormalizer()
                 normalized = normalizer.normalize(test_form["title"], test_form["level"] or None)
-                taxonomy = classify_role_taxonomy_with_rules(test_form["title"], taxonomy_rules)
+                taxonomy_match = find_role_taxonomy_match(
+                    role_title=test_form["title"],
+                    canonical_role=normalized["canonical_role"],
+                    taxonomy_rows=taxonomy_catalog["rows"],
+                )
+
+                if taxonomy_match:
+                    test_result = {
+                        "original_title": test_form["title"],
+                        "normalised_role": normalized["canonical_role"],
+                        "seniority_level": normalized["seniority_level"],
+                        "normalisation_confidence": normalized["confidence"],
+                        "job_family": taxonomy_match.get("job_family") or "",
+                        "job_function": taxonomy_match.get("job_function") or "",
+                        "matched_rule": "role-taxonomy-catalog",
+                        "taxonomy_source": taxonomy_match.get("source") or "",
+                        "taxonomy_role": taxonomy_match.get("job_role") or "",
+                        "key_responsibilities": taxonomy_match.get("key_responsibilities") or "",
+                        "requires_setup": False,
+                    }
+                else:
+                    suggested = classify_role_taxonomy_with_rules(test_form["title"], taxonomy_rules)
+                    create_form["job_family"] = suggested.get("family") or ""
+                    create_form["job_function"] = suggested.get("function") or ""
+                    create_form["role_title"] = test_form["title"]
+                    create_form["canonical_role"] = normalized["canonical_role"]
+
+                    test_result = {
+                        "original_title": test_form["title"],
+                        "normalised_role": normalized["canonical_role"],
+                        "seniority_level": normalized["seniority_level"],
+                        "normalisation_confidence": normalized["confidence"],
+                        "job_family": "",
+                        "job_function": "",
+                        "matched_rule": suggested.get("rule") or "default",
+                        "taxonomy_source": "",
+                        "taxonomy_role": "",
+                        "key_responsibilities": "",
+                        "requires_setup": True,
+                        "suggested_family": suggested.get("family") or "",
+                        "suggested_function": suggested.get("function") or "",
+                    }
+                    error = (
+                        f"No KornFerry Job Family/Job Function mapping found for '{test_form['title']}'. "
+                        "Create one below before running market research."
+                    )
+
+            elif action == "taxonomy_add_role_entry":
+                selected_family = create_form["job_family"]
+                selected_function = create_form["job_function"]
+                new_family = create_form["new_job_family"]
+                new_function = create_form["new_job_function"]
+                role_title = create_form["role_title"]
+                key_responsibilities = create_form["key_responsibilities"]
+
+                final_family = new_family or selected_family
+                final_function = new_function or selected_function
+
+                manual_override_requested = bool(new_family or new_function)
+                if manual_override_requested and not allow_manual_taxonomy_override():
+                    raise ValueError(
+                        "Only admins can create new Job Family/Job Function outside the KornFerry taxonomy. "
+                        "Please select a KornFerry family/function."
+                    )
+
+                if not final_family:
+                    raise ValueError("Select an existing job family or enter a new one")
+                if not final_function:
+                    raise ValueError("Select an existing job function or enter a new one")
+
+                entry = add_custom_role_taxonomy_entry(
+                    job_family=final_family,
+                    job_function=final_function,
+                    job_role=role_title,
+                    key_responsibilities=key_responsibilities,
+                )
+
+                canonical_role = create_form["canonical_role"]
+                if canonical_role and canonical_role != "Unmapped Role" and role_title:
+                    add_role_mapping_alias(canonical_role, role_title)
+
+                taxonomy_catalog = load_role_taxonomy_catalog()
+
+                created_labels: List[str] = []
+                if new_family:
+                    created_labels.append(f"new job family '{new_family}'")
+                if new_function:
+                    created_labels.append(f"new job function '{new_function}'")
+
+                success = f"Taxonomy mapping saved for '{entry['job_role']}'"
+                if created_labels:
+                    success += " (created " + " and ".join(created_labels) + ")"
 
                 test_result = {
-                    "original_title": test_form["title"],
-                    "normalised_role": normalized["canonical_role"],
-                    "seniority_level": normalized["seniority_level"],
-                    "normalisation_confidence": normalized["confidence"],
-                    "job_family": taxonomy["family"],
-                    "job_function": taxonomy["function"],
-                    "matched_rule": taxonomy.get("rule") or "default",
+                    "original_title": role_title,
+                    "normalised_role": canonical_role or role_title,
+                    "seniority_level": test_form.get("level") or "",
+                    "normalisation_confidence": "",
+                    "job_family": entry.get("job_family") or "",
+                    "job_function": entry.get("job_function") or "",
+                    "matched_rule": "manual-entry",
+                    "taxonomy_source": "Custom",
+                    "taxonomy_role": entry.get("job_role") or "",
+                    "key_responsibilities": entry.get("key_responsibilities") or "",
+                    "requires_setup": False,
                 }
 
             elif action == "taxonomy_add_rule":
@@ -1812,6 +2640,7 @@ def taxonomy_page():
 
     taxonomy_rules = load_taxonomy_rules()
     role_mapping_config = load_role_mapping_config()
+    taxonomy_catalog = load_role_taxonomy_catalog()
 
     rule_rows = taxonomy_rules.get("rules") or []
     role_mappings = role_mapping_config.get("role_mappings") or {}
@@ -1837,9 +2666,15 @@ def taxonomy_page():
         test_form=test_form,
         rule_form=rule_form,
         mapping_form=mapping_form,
+        create_form=create_form,
         test_result=test_result,
         error=error,
         success=success,
+        taxonomy_catalog=taxonomy_catalog,
+        taxonomy_rows_preview=taxonomy_catalog["rows"][:60],
+        taxonomy_families=taxonomy_catalog["families"],
+        taxonomy_family_function_map=taxonomy_catalog["family_function_map"],
+        taxonomy_family_function_map_json=json.dumps(taxonomy_catalog["family_function_map"]),
         **base_context(),
     )
 
@@ -1921,12 +2756,17 @@ def all_benchmarks_page():
         total_pages = result["total_pages"]
 
         converter = SalaryConverter()
+        taxonomy_catalog = load_role_taxonomy_catalog()
         for row in records:
             p25_daily = row.get("p25_daily_rate")
             median_daily = row.get("median_daily_rate")
             p75_daily = row.get("p75_daily_rate")
             country = row.get("country")
-            taxonomy = classify_role_taxonomy(row.get("role") or "")
+            taxonomy = classify_role_taxonomy(
+                role_name=row.get("role") or "",
+                canonical_role=row.get("role") or "",
+                taxonomy_rows=taxonomy_catalog["rows"],
+            )
             row["taxonomy_family"] = taxonomy["family"]
             row["taxonomy_function"] = taxonomy["function"]
 

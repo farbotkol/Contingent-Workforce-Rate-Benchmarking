@@ -13,18 +13,36 @@ from typing import Dict, List, Tuple, Optional, Any
 class RoleNormalizer:
     """Maps external job titles to canonical internal roles and seniority levels."""
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(
+        self,
+        config_path: Optional[str] = None,
+        taxonomy_spreadsheet_path: Optional[str] = None,
+        taxonomy_sheet_name: str = "Role Taxonomy",
+        use_taxonomy_spreadsheet: bool = True,
+    ):
         """
         Initialize the role normalizer.
         
         Args:
             config_path: Path to role_mapping.yaml. If None, uses default location.
+            taxonomy_spreadsheet_path: Optional path to taxonomy spreadsheet.
+            taxonomy_sheet_name: Worksheet name containing taxonomy roles.
+            use_taxonomy_spreadsheet: Whether to use spreadsheet roles as fallback mappings.
         """
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+
         if config_path is None:
             config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
+                base_dir,
                 'config',
                 'role_mapping.yaml'
+            )
+
+        if taxonomy_spreadsheet_path is None:
+            taxonomy_spreadsheet_path = os.path.join(
+                base_dir,
+                'Role Taxonomy Updates',
+                'CXC Role Taxonomy 0732026.xlsx'
             )
         
         with open(config_path, 'r') as f:
@@ -34,9 +52,16 @@ class RoleNormalizer:
         self.seniority_levels = self.config.get('seniority_levels', [])
         self.seniority_keywords = self.config.get('seniority_keywords', {})
         self.role_mappings = self.config.get('role_mappings', {})
+        self.taxonomy_sheet_name = taxonomy_sheet_name
+        self.taxonomy_spreadsheet_path = taxonomy_spreadsheet_path
+        self.taxonomy_role_mapping: Dict[str, str] = {}
         
         # Create reverse mapping for faster lookup
         self._create_reverse_mapping()
+
+        # Spreadsheet taxonomy roles are used as fallback canonical mappings.
+        if use_taxonomy_spreadsheet:
+            self._load_taxonomy_role_mapping()
     
     def _create_reverse_mapping(self) -> None:
         """Create a reverse mapping from external title to canonical role."""
@@ -44,6 +69,41 @@ class RoleNormalizer:
         for canonical_role, external_titles in self.role_mappings.items():
             for external_title in external_titles:
                 self.reverse_mapping[external_title.lower()] = canonical_role
+
+    def _load_taxonomy_role_mapping(self) -> None:
+        """Load role names from taxonomy spreadsheet as canonical fallback mappings."""
+        if not os.path.exists(self.taxonomy_spreadsheet_path):
+            return
+
+        try:
+            import pandas as pd
+        except Exception:
+            return
+
+        try:
+            frame = pd.read_excel(
+                self.taxonomy_spreadsheet_path,
+                sheet_name=self.taxonomy_sheet_name
+            )
+        except Exception:
+            return
+
+        role_column = None
+        for candidate in frame.columns:
+            cleaned = str(candidate).strip().lower().replace('_', ' ')
+            if cleaned == 'job role':
+                role_column = candidate
+                break
+
+        if role_column is None:
+            return
+
+        for raw_role in frame[role_column].tolist():
+            if raw_role is None:
+                continue
+            role = str(raw_role).strip()
+            if role and role.lower() != 'nan':
+                self.taxonomy_role_mapping[role.lower()] = role
     
     def map_title(self, external_title: str) -> str:
         """
@@ -63,6 +123,10 @@ class RoleNormalizer:
         # Direct lookup
         if external_lower in self.reverse_mapping:
             return self.reverse_mapping[external_lower]
+
+        # Spreadsheet exact lookup
+        if external_lower in self.taxonomy_role_mapping:
+            return self.taxonomy_role_mapping[external_lower]
         
         # Partial match - check if any external title is contained in the input
         for external_title_key, canonical_role in self.reverse_mapping.items():
@@ -73,6 +137,11 @@ class RoleNormalizer:
         for external_title_key, canonical_role in self.reverse_mapping.items():
             if external_title_key in external_lower or external_lower in external_title_key:
                 return canonical_role
+
+        # Taxonomy spreadsheet partial lookup
+        for taxonomy_role_key, taxonomy_role in self.taxonomy_role_mapping.items():
+            if taxonomy_role_key in external_lower or external_lower in taxonomy_role_key:
+                return taxonomy_role
         
         return "Unmapped Role"
     

@@ -139,7 +139,7 @@ class BenchmarkDatabase:
         cursor.execute('''
             INSERT OR IGNORE INTO app_settings (key, value, updated_at)
             VALUES (?, ?, ?)
-        ''', ('branding', 'oncore', current_ts))
+        ''', ('branding', 'cxc', current_ts))
         
         self.conn.commit()
         logger.info(f"Database initialized at {self.db_path}")

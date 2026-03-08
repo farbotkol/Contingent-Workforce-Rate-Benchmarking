@@ -12,7 +12,7 @@ from processing.normalization import RoleNormalizer
 @pytest.fixture
 def normalizer():
     """Fixture to create a RoleNormalizer instance."""
-    return RoleNormalizer()
+    return RoleNormalizer(use_taxonomy_spreadsheet=False)
 
 
 class TestRoleMapping:
@@ -53,6 +53,26 @@ class TestRoleMapping:
         
         for title in titles:
             assert normalizer.map_title(title) == expected
+
+    def test_taxonomy_fallback_exact_match(self):
+        """Test taxonomy spreadsheet role fallback exact matching."""
+        fallback_normalizer = RoleNormalizer(use_taxonomy_spreadsheet=False)
+        fallback_normalizer.taxonomy_role_mapping = {
+            "workday integration specialist": "Workday Integration Specialist"
+        }
+
+        result = fallback_normalizer.map_title("Workday Integration Specialist")
+        assert result == "Workday Integration Specialist"
+
+    def test_taxonomy_fallback_partial_match(self):
+        """Test taxonomy spreadsheet role fallback partial matching."""
+        fallback_normalizer = RoleNormalizer(use_taxonomy_spreadsheet=False)
+        fallback_normalizer.taxonomy_role_mapping = {
+            "workday integration specialist": "Workday Integration Specialist"
+        }
+
+        result = fallback_normalizer.map_title("Senior Workday Integration Specialist")
+        assert result == "Workday Integration Specialist"
 
 
 class TestSeniorityClassification:
